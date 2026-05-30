@@ -7,14 +7,8 @@ raw line --> ParsedIngredient(quantity, unit, canonical, modifier)
 from __future__ import annotations
 
 from pantrychef.common.types import ParsedIngredient
-from pantrychef.ingredients.normalize import normalize, singularize
+from pantrychef.ingredients.normalize import canonicalize
 from pantrychef.ingredients.units import parse_quantity, parse_unit
-
-
-def _canon_phrase(text: str) -> str:
-    # Replace hyphens with spaces before normalizing so "all-purpose" → "all purpose"
-    text = text.replace("-", " ")
-    return " ".join(singularize(t) for t in normalize(text).split())
 
 
 def match_canonical(phrase: str, vocab: list[str]) -> str | None:
@@ -28,7 +22,7 @@ def match_canonical(phrase: str, vocab: list[str]) -> str | None:
     (lowercase, singular, hyphen-free, space-separated) — i.e. produced by
     `build_vocabulary`. Only the input `phrase` is canonicalized here.
     """
-    tokens = set(_canon_phrase(phrase).split())
+    tokens = set(canonicalize(phrase).split())
     if not tokens:
         return None
     best: str | None = None

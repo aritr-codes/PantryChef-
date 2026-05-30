@@ -18,3 +18,11 @@ def test_singularize_common_plurals() -> None:
 def test_singularize_leaves_short_and_double_s() -> None:
     assert singularize("oil") == "oil"
     assert singularize("molasses") == "molasses"
+
+
+def test_canonicalize_hyphen_and_singularize() -> None:
+    from pantrychef.ingredients.normalize import canonicalize
+
+    assert canonicalize("All-Purpose Flour") == "all purpose flour"
+    assert canonicalize("3 Eggs") == "3 egg"
+    assert canonicalize("  Olive   Oil  ") == "olive oil"

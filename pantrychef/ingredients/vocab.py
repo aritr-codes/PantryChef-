@@ -13,18 +13,14 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from pantrychef.data.schemas import RawRecipe
-from pantrychef.ingredients.normalize import normalize, singularize
-
-
-def _canon_token(entity: str) -> str:
-    return " ".join(singularize(t) for t in normalize(entity).split()).strip()
+from pantrychef.ingredients.normalize import canonicalize
 
 
 def build_vocabulary(recipes: Iterable[RawRecipe], min_count: int = 2) -> list[str]:
     counts: Counter[str] = Counter()
     for r in recipes:
         for ent in r.ner:
-            c = _canon_token(ent)
+            c = canonicalize(ent)
             if c:
                 counts[c] += 1
     vocab = [w for w, n in counts.items() if n >= min_count]

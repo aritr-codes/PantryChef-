@@ -9,14 +9,14 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from pantrychef.data.schemas import RawRecipe
+from pantrychef.ingredients.normalize import canonicalize
 from pantrychef.ingredients.parser import parse
-from pantrychef.ingredients.vocab import _canon_token
 
 
 def evaluate_parser(recipes: Iterable[RawRecipe], vocab: list[str]) -> dict[str, float]:
     tp = fp = fn = 0
     for r in recipes:
-        gold = {_canon_token(e) for e in r.ner if _canon_token(e)}
+        gold = {canonicalize(e) for e in r.ner if canonicalize(e)}
         pred = {pi.canonical for line in r.ingredients if (pi := parse(line, vocab)).canonical}
         tp += len(pred & gold)
         fp += len(pred - gold)

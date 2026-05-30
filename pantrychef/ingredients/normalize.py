@@ -33,3 +33,14 @@ def singularize(word: str) -> str:
     if word.endswith("s"):
         return word[:-1]
     return word
+
+
+def canonicalize(text: str) -> str:
+    """Single canonical form used across vocab, parsing, retrieval, and eval.
+
+    Hyphens → spaces (so "all-purpose" tokenizes), then `normalize`, then
+    `singularize` each token. One source of truth guarantees identical surface
+    forms map to the same canonical string everywhere.
+    """
+    spaced = text.replace("-", " ")
+    return " ".join(singularize(t) for t in normalize(spaced).split())
