@@ -9,6 +9,7 @@ authors = [{ name = "PantryChef contributors" }]
 dependencies = [
     "pydantic>=2.6",
     "pydantic-settings>=2.2",
+    "pandas>=2.2",
 ]
 
 [project.optional-dependencies]

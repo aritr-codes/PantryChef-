@@ -37,3 +37,27 @@ def test_cli_runs() -> None:
     from pantrychef.cli import main
 
     assert main([]) == 0
+
+
+def test_recipe_and_scored_recipe_types() -> None:
+    from pantrychef.common.types import Recipe, ScoredRecipe
+
+    r = Recipe(
+        recipe_id="r0",
+        title="Pancakes",
+        ingredients_raw=["2 cups flour"],
+        canonical=["flour"],
+    )
+    assert r.canonical == ["flour"]
+    assert Recipe(recipe_id="x", title="y").canonical == []  # list default, not None
+
+    s = ScoredRecipe(
+        recipe_id="r0",
+        score=1.0,
+        title="Pancakes",
+        matched=["flour"],
+        missing=["egg"],
+    )
+    assert s.title == "Pancakes"
+    assert s.matched == ["flour"]
+    assert s.missing == ["egg"]

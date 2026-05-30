@@ -28,11 +28,22 @@ class Substitute(BaseModel):
     dietary_valid: bool = True
 
 
+class Recipe(BaseModel):
+    """A cleaned recipe with a canonical ingredient set (Phase 1)."""
+
+    recipe_id: str
+    title: str
+    ingredients_raw: list[str] = []
+    canonical: list[str] = []
+
+
 class ScoredRecipe(BaseModel):
-    """A ranked recipe result (Phase 3)."""
+    """A ranked recipe result (Phase 1/3)."""
 
     recipe_id: str
     score: float
+    title: str = ""
+    matched: list[str] = []
     missing: list[str] = []
 
 
