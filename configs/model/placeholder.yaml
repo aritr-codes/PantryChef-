@@ -1,0 +1,3 @@
+# Placeholder model config. Real configs (skipgram, graph, ltr, yolo) land
+# per phase. Kept so the Hydra defaults list resolves in Phase 0.
+name: placeholder

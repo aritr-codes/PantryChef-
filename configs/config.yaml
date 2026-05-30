@@ -1,0 +1,14 @@
+# Root Hydra config. Compose experiment configs from the groups below.
+# Usage (Phase 2+):  python -m pantrychef.<module> --config-name config
+#                    ... data=recipenlg model=skipgram experiment=p2_ablation
+defaults:
+  - data: recipenlg
+  - model: placeholder
+  - experiment: default
+  - _self_
+
+seed: 42
+output_dir: experiments/outputs
+mlflow:
+  experiment_name: pantrychef
+  # tracking_uri resolved from pantrychef.config.Settings at runtime

@@ -1,0 +1,4 @@
+# Default experiment config. Override per experiment; log each in
+# docs/EXPERIMENTS.md with the matching MLflow run.
+name: default
+notes: "Phase 0 placeholder."

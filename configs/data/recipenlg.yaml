@@ -1,0 +1,8 @@
+# RecipeNLG data config (Phase 1). Values filled when ingestion lands.
+name: recipenlg
+source: huggingface           # mbien/recipe_nlg
+split:
+  train: 0.8
+  val: 0.1
+  test: 0.1
+max_rows: null                # null = all; set small for quick local runs
