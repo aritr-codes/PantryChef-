@@ -14,7 +14,7 @@ project. Status legend: ⬜ not started · 🟡 in progress · ✅ done.
   Hydra config skeleton, CI, Docker placeholders.
 - **Defer:** all ML.
 
-## Phase 1 — Data Foundation & Ingredient Intelligence ⬜
+## Phase 1 — Data Foundation & Ingredient Intelligence 🟡
 - **Goal:** reproducible recipe corpus + free-text ingredient parser + baseline retrieval.
 - **Skills:** data engineering, text normalization, hybrid NER, eval discipline.
 - **Metrics:** parser F1 ≥0.85 (canonical match); retrieval recall@k baseline.

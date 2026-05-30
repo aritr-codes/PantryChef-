@@ -4,7 +4,7 @@
 > text or photo — and it finds makeable recipes, suggests **valid** ingredient
 > substitutions, and breaks down nutrition. The hard ML is built, not called.
 
-[![Phase](https://img.shields.io/badge/phase-0%20scaffold-lightgrey)](ROADMAP.md)
+[![Phase](https://img.shields.io/badge/phase--1%20foundation-blue)](ROADMAP.md)
 [![Python](https://img.shields.io/badge/python-3.11-blue)](.python-version)
 [![Lint](https://img.shields.io/badge/lint-ruff-261230)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -36,7 +36,10 @@ everything should be a model.
 
 ## Status
 
-Phase 0 — engineering scaffold. No ML implemented yet. See [ROADMAP.md](ROADMAP.md).
+Phase 1 (in progress) — data foundation, hybrid ingredient parser, and a
+set-overlap retrieval baseline are implemented and tested. Metrics pending a
+real-data run (see [docs/EVALUATION.md](docs/EVALUATION.md)). See
+[ROADMAP.md](ROADMAP.md).
 
 ## Results
 

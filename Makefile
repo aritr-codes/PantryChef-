@@ -21,8 +21,8 @@ data:         ## download/prepare datasets (Phase 1)
 train:        ## train models (per-phase; see configs/)
 	@echo "Not implemented until Phase 2."
 
-eval:         ## run evaluation harness
-	@echo "Not implemented until Phase 1."
+eval:         ## run Phase 1 evaluation harness
+	uv run python -m pantrychef.eval
 
 serve:        ## run FastAPI app (Phase 6)
 	@echo "Not implemented until Phase 6."

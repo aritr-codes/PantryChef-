@@ -17,8 +17,16 @@ the data is and *how to reproduce* it.
 - **License:** check dataset card before redistribution (research use).
 - **Schema (raw):** `title`, `ingredients` (free text), `directions`, `NER`
   (extracted food entities), `link`, `source`.
-- **Preprocessing:** _tbd Phase 1_ — dedup, canonical-ingredient mapping,
-  train/val/test splits (record split seed + sizes here).
+- **Preprocessing (Phase 1):**
+  1. Manual download `full_dataset.csv` → `data/raw/` (terms acceptance).
+  2. `uv run python scripts/download_data.py --max-rows N --min-count 5`:
+     - Pass 1 builds `data/processed/vocab.json` from the `NER` column
+       (canonicalized, frequency-filtered at `min_count`).
+     - Pass 2 writes `data/processed/recipes.jsonl` (cleaned, deduped by title,
+       canonical ingredient sets).
+  3. Record `N`, vocab size, and recipe count of each run here.
+- **Splits:** assigned at training time (Phase 2+); Phase 1 retrieval eval is
+  leave-one-ingredient-out over the full processed set (seed=42).
 
 ### USDA FoodData Central  (Phase 4 — nutrition)
 - **Why:** authoritative free nutrition data (macros + micros).
