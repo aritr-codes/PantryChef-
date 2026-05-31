@@ -26,6 +26,7 @@ class Substitute(BaseModel):
     ingredient: str
     score: float
     dietary_valid: bool = True
+    arm: str | None = None  # which arm produced it: "emb" | "graph" | "hybrid"
 
 
 class Recipe(BaseModel):

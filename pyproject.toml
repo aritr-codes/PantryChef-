@@ -20,6 +20,13 @@ dev = [
     "pytest-cov>=5.0",
     "pre-commit>=3.7",
 ]
+# Phase 2 flagship (CPU-only). Installed on demand to keep base env light.
+substitution = [
+    "gensim>=4.3.0",
+    "scipy>=1.11",
+    "numpy>=1.26",
+    "mlflow>=2.9",
+]
 
 [project.scripts]
 pantrychef = "pantrychef.cli:main"

@@ -39,6 +39,15 @@ def test_cli_runs() -> None:
     assert main([]) == 0
 
 
+def test_substitute_has_arm_field() -> None:
+    from pantrychef.common.types import Substitute
+
+    s = Substitute(ingredient="margarine", score=0.9, arm="hybrid")
+    assert s.arm == "hybrid"
+    assert s.dietary_valid is True
+    assert Substitute(ingredient="oil", score=0.1).arm is None
+
+
 def test_recipe_and_scored_recipe_types() -> None:
     from pantrychef.common.types import Recipe, ScoredRecipe
 
