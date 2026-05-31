@@ -131,6 +131,8 @@ class Substitutor:
           5. Hard-mask by dietary validity.
           6. Return top-k as ``Substitute`` objects (arm="hybrid").
         """
+        if k is not None and k <= 0:
+            return []
         k = self.cfg.k if k is None else k
         ing = canonicalize(ingredient)
         pool = max(k * 4, 20)
@@ -154,8 +156,9 @@ class Substitutor:
             ctx = [canonicalize(c) for c in recipe if canonicalize(c) != ing]
             fused = _context_rerank(fused, ctx, self.emb, self.cfg.context_weight)
 
+        arm = "emb" if self.cfg.alpha >= 1.0 else "graph" if self.cfg.alpha <= 0.0 else "hybrid"
         return [
-            Substitute(ingredient=it, score=float(s), dietary_valid=True, arm="hybrid")
+            Substitute(ingredient=it, score=float(s), dietary_valid=True, arm=arm)
             for it, s in fused[:k]
         ]
 

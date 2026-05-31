@@ -95,8 +95,10 @@ class DietTagger:
         Unknown ingredients are conservatively excluded when a constrained diet
         is specified, since we cannot assert they are safe.
         """
-        if not diet or diet not in _DIETS:
+        if not diet:
             return True
+        if diet not in _DIETS:
+            raise ValueError(f"unknown diet {diet!r}; expected one of {sorted(_DIETS)}")
         if not self._is_known(ingredient):
             return False  # conservative: don't assume an untagged ingredient is safe
         return not (self.tags(ingredient) & _DIETS[diet])

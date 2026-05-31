@@ -50,3 +50,21 @@ def test_dietary_validity() -> None:
 
     rate, cov = dietary_validity(_S(), _T(), [("milk", "vegan")], k=2)
     assert 0.0 <= rate <= 1.0
+
+
+# ── Fix 3: vacuous result when substitutor yields nothing locks contract ─────
+
+def test_dietary_validity_empty_substitutor_returns_vacuous_rate() -> None:
+    """When the substitutor returns no subs at all, rate=1.0 and total=0.0."""
+
+    class _NullT:
+        def is_valid(self, ing, diet):
+            return True
+
+    class _NullS:
+        def substitutes(self, ingredient, diet=None, recipe=None, k=None):
+            return []
+
+    rate, total = dietary_validity(_NullS(), _NullT(), [("butter", "vegan")], k=5)
+    assert rate == 1.0
+    assert total == 0.0

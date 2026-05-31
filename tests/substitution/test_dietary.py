@@ -1,3 +1,5 @@
+import pytest
+
 from pantrychef.substitution.dietary import DietTagger
 
 VOCAB = ["butter", "milk", "egg", "olive oil", "tofu", "flour", "wheat bread", "chicken", "honey"]
@@ -52,3 +54,17 @@ def test_coverage_fraction() -> None:
     cov = t.coverage(VOCAB)
     assert 0.0 <= cov <= 1.0
     assert cov > 0.5  # most of this vocab is tagged or oil/tofu (known-safe)
+
+
+# ── Fix 2: None diet = no constraint; unknown non-empty diet = ValueError ────
+
+def test_is_valid_none_diet_always_true() -> None:
+    t = _tagger()
+    assert t.is_valid("olive oil", None) is True
+    assert t.is_valid("butter", None) is True  # even restricted ingredient is valid with no diet
+
+
+def test_is_valid_unknown_diet_raises() -> None:
+    t = _tagger()
+    with pytest.raises(ValueError, match="halal"):
+        t.is_valid("olive oil", "halal")

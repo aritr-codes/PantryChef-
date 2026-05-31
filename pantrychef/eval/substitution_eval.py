@@ -7,8 +7,11 @@ and the harness can report both covered-subset and pessimistic metrics
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from typing import Protocol
+
+log = logging.getLogger(__name__)
 
 
 def precision_at_k(preds: Sequence[str], gold: set[str], k: int) -> float:
@@ -160,6 +163,8 @@ def dietary_validity(
     # When the substitutor returns nothing for all queries, treat as perfect
     # validity for this metric (the caller can detect total==0 and warn).
     rate = valid / total if total else 1.0
+    if total == 0:
+        log.warning("dietary_validity: no substitutes produced; rate=1.0 is vacuous")
     return rate, float(total)
 
 

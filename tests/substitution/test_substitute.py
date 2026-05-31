@@ -76,3 +76,45 @@ def test_context_rerank_applies_when_enabled() -> None:
                     cfg=SubConfig(alpha=1.0, context_weight=1.0))
     out = s.substitutes("butter", recipe=["flour"], k=2)
     assert out[0].ingredient == "margarine"  # context boost wins the tie
+
+
+# ── Fix 1: negative / zero k guard ─────────────────────────────────────────
+
+def test_substitutes_zero_k_returns_empty() -> None:
+    from pantrychef.substitution.config import SubConfig
+
+    emb = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    graph = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    s = Substitutor(emb=emb, graph=graph, tagger=_FakeTagger(), cfg=SubConfig(alpha=0.5))
+    assert s.substitutes("butter", k=0) == []
+
+
+def test_substitutes_negative_k_returns_empty() -> None:
+    from pantrychef.substitution.config import SubConfig
+
+    emb = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    graph = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    s = Substitutor(emb=emb, graph=graph, tagger=_FakeTagger(), cfg=SubConfig(alpha=0.5))
+    assert s.substitutes("butter", k=-1) == []
+
+
+# ── Fix 4: accurate arm provenance from alpha ───────────────────────────────
+
+def test_arm_provenance_emb_only() -> None:
+    from pantrychef.substitution.config import SubConfig
+
+    emb = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    graph = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    s = Substitutor(emb=emb, graph=graph, tagger=_FakeTagger(), cfg=SubConfig(alpha=1.0, k=2))
+    out = s.substitutes("butter")
+    assert all(o.arm == "emb" for o in out), f"expected emb, got {[o.arm for o in out]}"
+
+
+def test_arm_provenance_graph_only() -> None:
+    from pantrychef.substitution.config import SubConfig
+
+    emb = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    graph = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    s = Substitutor(emb=emb, graph=graph, tagger=_FakeTagger(), cfg=SubConfig(alpha=0.0, k=2))
+    out = s.substitutes("butter")
+    assert all(o.arm == "graph" for o in out), f"expected graph, got {[o.arm for o in out]}"
