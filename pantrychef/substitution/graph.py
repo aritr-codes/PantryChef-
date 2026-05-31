@@ -42,6 +42,12 @@ class ContextGraph:
         cooccur: sparse.csr_matrix,
         lam: float = 0.5,
     ) -> None:
+        n = len(vocab)
+        if sppmi_matrix.shape != (n, n) or cooccur.shape != (n, n):
+            raise ValueError(
+                "sppmi_matrix, cooccur, and vocab must agree in size: "
+                f"expected ({n}, {n}), got sppmi={sppmi_matrix.shape} cooccur={cooccur.shape}"
+            )
         self.vocab = list(vocab)
         self.idx = {w: i for i, w in enumerate(self.vocab)}
         self._mn = l2norm_rows(sppmi_matrix).tocsr()
@@ -70,6 +76,10 @@ class ContextGraph:
         i = self.idx.get(ingredient)
         if i is None:
             return []
+        if k <= 0:
+            return []
+        if self._mn[i].nnz == 0:
+            return []
         lam = self.lam if lam is None else lam
         sim = np.asarray((self._mn @ self._mn[i].T).toarray()).ravel()
         crow = np.asarray(self._c[i].toarray()).ravel().astype(float)
@@ -77,5 +87,5 @@ class ContextGraph:
         penalty = crow / cmax if cmax > 0 else crow
         score = sim - lam * penalty
         score[i] = -np.inf
-        order = np.argsort(-score)[:k]
+        order = np.argsort(-score, kind="stable")[:k]
         return [(self.vocab[j], float(score[j])) for j in order if np.isfinite(score[j])]
