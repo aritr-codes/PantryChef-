@@ -1,4 +1,4 @@
-from pantrychef.ingredients.parser import match_canonical, parse
+from pantrychef.ingredients.parser import build_match_index, match_canonical, parse
 
 VOCAB = ["all purpose flour", "flour", "olive oil", "egg", "milk", "sugar", "salt"]
 
@@ -36,3 +36,33 @@ def test_parse_without_vocab_returns_none_canonical() -> None:
     assert pi.quantity == 2.0
     assert pi.unit == "cup"
     assert pi.canonical is None
+
+
+def test_build_match_index_maps_tokens() -> None:
+    idx = build_match_index(["all purpose flour", "flour"])
+    assert "all purpose flour" in idx["all"]
+    assert set(idx["flour"]) == {"all purpose flour", "flour"}
+
+
+def test_match_index_equivalence() -> None:
+    # The token-pruned path MUST return identical results to the full scan.
+    idx = build_match_index(VOCAB)
+    phrases = [
+        "2 cups all-purpose flour",
+        "plain flour",
+        "3 eggs",
+        "extra virgin olive oil",
+        "dragonfruit",
+        "a pinch of salt and sugar",
+        "",
+    ]
+    for p in phrases:
+        assert match_canonical(p, VOCAB, idx) == match_canonical(p, VOCAB)
+
+
+def test_parse_with_index_matches_without() -> None:
+    idx = build_match_index(VOCAB)
+    with_idx = parse("2 cups all-purpose flour, sifted", VOCAB, idx)
+    without = parse("2 cups all-purpose flour, sifted", VOCAB)
+    assert with_idx == without
+    assert with_idx.canonical == "all purpose flour"

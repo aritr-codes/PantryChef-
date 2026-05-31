@@ -10,14 +10,16 @@ from collections.abc import Iterable, Iterator
 
 from pantrychef.common.types import Recipe
 from pantrychef.data.schemas import RawRecipe
-from pantrychef.ingredients.parser import parse
+from pantrychef.ingredients.parser import MatchIndex, build_match_index, parse
 
 
-def to_recipe(raw: RawRecipe, recipe_id: str, vocab: list[str]) -> Recipe:
+def to_recipe(
+    raw: RawRecipe, recipe_id: str, vocab: list[str], index: MatchIndex | None = None
+) -> Recipe:
     canonical: list[str] = []
     seen: set[str] = set()
     for line in raw.ingredients:
-        pi = parse(line, vocab)
+        pi = parse(line, vocab, index)
         if pi.canonical and pi.canonical not in seen:
             seen.add(pi.canonical)
             canonical.append(pi.canonical)
@@ -30,6 +32,7 @@ def to_recipe(raw: RawRecipe, recipe_id: str, vocab: list[str]) -> Recipe:
 
 
 def clean_recipes(raws: Iterable[RawRecipe], vocab: list[str]) -> Iterator[Recipe]:
+    index = build_match_index(vocab)  # built once; reused for every ingredient line
     seen_titles: set[str] = set()
     idx = 0
     for raw in raws:
@@ -37,5 +40,5 @@ def clean_recipes(raws: Iterable[RawRecipe], vocab: list[str]) -> Iterator[Recip
         if not key or key in seen_titles:
             continue
         seen_titles.add(key)
-        yield to_recipe(raw, f"r{idx}", vocab)
+        yield to_recipe(raw, f"r{idx}", vocab, index)
         idx += 1

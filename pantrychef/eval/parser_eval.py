@@ -10,14 +10,17 @@ from collections.abc import Iterable
 
 from pantrychef.data.schemas import RawRecipe
 from pantrychef.ingredients.normalize import canonicalize
-from pantrychef.ingredients.parser import parse
+from pantrychef.ingredients.parser import build_match_index, parse
 
 
 def evaluate_parser(recipes: Iterable[RawRecipe], vocab: list[str]) -> dict[str, float]:
+    index = build_match_index(vocab)  # built once; reused per ingredient line
     tp = fp = fn = 0
     for r in recipes:
         gold = {canonicalize(e) for e in r.ner if canonicalize(e)}
-        pred = {pi.canonical for line in r.ingredients if (pi := parse(line, vocab)).canonical}
+        pred = {
+            pi.canonical for line in r.ingredients if (pi := parse(line, vocab, index)).canonical
+        }
         tp += len(pred & gold)
         fp += len(pred - gold)
         fn += len(gold - pred)
