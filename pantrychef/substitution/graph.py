@@ -13,6 +13,7 @@ from collections.abc import Sequence
 
 import numpy as np
 from scipy import sparse
+from scipy.sparse.linalg import svds
 
 from pantrychef.substitution.cooccur import l2norm_rows
 
@@ -89,3 +90,35 @@ class ContextGraph:
         score[i] = -np.inf
         order = np.argsort(-score, kind="stable")[:k]
         return [(self.vocab[j], float(score[j])) for j in order if np.isfinite(score[j])]
+
+
+class SvdContextModel:
+    """Dense SPPMI+SVD embeddings; cosine kNN. The SPPMI+SVD baseline arm."""
+
+    def __init__(self, vectors: np.ndarray, vocab: Sequence[str]) -> None:
+        self.vocab = list(vocab)
+        self.idx = {w: i for i, w in enumerate(self.vocab)}
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        self._v = vectors / norms
+
+    @classmethod
+    def fit(
+        cls, sppmi_matrix: sparse.csr_matrix, vocab: Sequence[str], dims: int
+    ) -> SvdContextModel:
+        """Fit SVD on an SPPMI matrix and return a normalised embedding model."""
+        d = min(dims, min(sppmi_matrix.shape) - 1)
+        u, s, _ = svds(sppmi_matrix.asfptype(), k=d)
+        return cls(u * s, vocab)
+
+    def neighbors(self, ingredient: str, k: int = 5) -> list[tuple[str, float]]:
+        """Return top-k cosine-similar ingredients by embedding, excluding the query."""
+        if k <= 0:
+            return []
+        i = self.idx.get(ingredient)
+        if i is None:
+            return []
+        sim = self._v @ self._v[i]
+        sim[i] = -np.inf
+        order = np.argsort(-sim, kind="stable")[:k]
+        return [(self.vocab[j], float(sim[j])) for j in order if np.isfinite(sim[j])]

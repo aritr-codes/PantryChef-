@@ -170,3 +170,15 @@ def test_penalty_demotes_cooccurring_rival() -> None:
     assert nbrs_lam05["oil"] == nbrs_lam0["oil"], (
         "oil's score must not change with lam since its co-occurrence penalty is 0"
     )
+
+
+def test_svd_model_neighbors() -> None:
+    from pantrychef.substitution.cooccur import build_cooccurrence, sppmi
+    from pantrychef.substitution.graph import SvdContextModel
+
+    cmat, _, _, _ = build_cooccurrence(RECIPES, VOCAB)
+    m = sppmi(cmat, shift=1.0)
+    model = SvdContextModel.fit(m, list(VOCAB), dims=3)
+    nbrs = model.neighbors("butter", k=2)
+    assert all(n != "butter" for n, _ in nbrs)
+    assert "oil" in [n for n, _ in nbrs]
