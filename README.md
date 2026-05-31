@@ -36,21 +36,23 @@ everything should be a model.
 
 ## Status
 
-Phase 1 (in progress) — data foundation, hybrid ingredient parser, and a
-set-overlap retrieval baseline are implemented and tested. Metrics pending a
-real-data run (see [docs/EVALUATION.md](docs/EVALUATION.md)). See
-[ROADMAP.md](ROADMAP.md).
+**Phase 1 complete ✅** — data foundation, hybrid ingredient parser, and a
+set-overlap retrieval baseline, validated on real RecipeNLG data. See
+[ROADMAP.md](ROADMAP.md). Next: Phase 2 (flagship ingredient substitution).
 
 ## Results
 
-_Populated as phases ship. See [docs/EVALUATION.md](docs/EVALUATION.md) for the
-live leaderboard vs published baselines._
+_See [docs/EVALUATION.md](docs/EVALUATION.md) for protocol + provenance._
 
-| Task          | Metric        | Baseline | PantryChef |
-| ------------- | ------------- | -------- | ---------- |
-| Substitution  | precision@5   | _tbd_    | _tbd_      |
-| Recommendation| NDCG@10       | _tbd_    | _tbd_      |
-| Detection     | mAP@0.5       | _tbd_    | _tbd_      |
+| Phase | Task | Metric | PantryChef |
+| ----- | ---- | ------ | ---------- |
+| 1 ✅ | Ingredient parser | canonical-match F1 | **0.864** (target ≥0.85) |
+| 1 ✅ | Retrieval baseline | recall@10 | **0.873** |
+| 2 | Substitution | precision@5 | _tbd_ |
+| 3 | Recommendation | NDCG@10 | _tbd_ |
+| 5 | Detection | mAP@0.5 | _tbd_ |
+
+<sub>Phase 1 numbers: 50k-recipe RecipeNLG sample, min_count=5, seed=42.</sub>
 
 ## Quickstart
 

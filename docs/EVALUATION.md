@@ -14,15 +14,31 @@ defined metric, a protocol, and a number compared against a baseline.
 
 ## Leaderboards
 
+> **Phase 1 eval provenance:** RecipeNLG, **50,000-recipe sample**, `min_count=5`
+> (vocab = 2,067 canonical ingredients), seed=42. Sample-based by design:
+> parser eval is fast (~37s) but retrieval leave-one-out is O(N²) on shared
+> postings (see [CHALLENGES.md](CHALLENGES.md)), so it runs on the sample, not
+> the full 2.23M corpus. Numbers are a baseline to beat in Phase 2+.
+
 ### Phase 1 — Ingredient parser
 | Metric | Baseline | Current | Target | Run |
 | ------ | -------- | ------- | ------ | --- |
-| Canonical-match F1 | rule-only _tbd_ | _tbd_ | ≥0.85 | — |
+| Canonical-match precision | — | 0.860 | — | 50k, 2026-05-31 |
+| Canonical-match recall | — | 0.869 | — | 50k, 2026-05-31 |
+| **Canonical-match F1** | — | **0.864** | **≥0.85 ✅** | 50k, 2026-05-31 |
+
+_Counts: tp=315,224 fp=51,379 fn=47,456 (micro-averaged over the sample).
+Gold = RecipeNLG `NER` column; both gold and prediction canonicalized via the
+same `canonicalize()` path._
 
 ### Phase 1 — Retrieval baseline
 | Metric | Baseline | Current | Run |
 | ------ | -------- | ------- | --- |
-| recall@10 | random _tbd_ | _tbd_ | — |
+| **recall@10** (leave-one-ingredient-out) | — | **0.873** | 50k (n=28,183), 2026-05-31 |
+
+_Protocol: for each recipe with ≥2 canonical ingredients, drop one at random
+(seed=42), query with the rest, hit if the source recipe is in top-10. Set-overlap
+coverage scoring. This is the number Phase 3's learned ranker must beat._
 
 ### Phase 2 — Substitution (flagship)
 | Metric | food2vec | GISMo | PantryChef | Run |

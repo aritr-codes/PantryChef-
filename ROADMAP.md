@@ -8,18 +8,21 @@ project. Status legend: ⬜ not started · 🟡 in progress · ✅ done.
 
 ---
 
-## Phase 0 — Engineering Scaffold 🟡
+## Phase 0 — Engineering Scaffold ✅
 - **Goal:** serious-from-day-one foundation before any ML.
 - **Deliverables:** repo structure, docs system, `uv`/`ruff`/`pytest` tooling,
   Hydra config skeleton, CI, Docker placeholders.
 - **Defer:** all ML.
 
-## Phase 1 — Data Foundation & Ingredient Intelligence 🟡
+## Phase 1 — Data Foundation & Ingredient Intelligence ✅
 - **Goal:** reproducible recipe corpus + free-text ingredient parser + baseline retrieval.
 - **Skills:** data engineering, text normalization, hybrid NER, eval discipline.
-- **Metrics:** parser F1 ≥0.85 (canonical match); retrieval recall@k baseline.
+- **Metrics (achieved, 50k RecipeNLG sample):** parser **F1 0.864** (target ≥0.85 ✅);
+  retrieval **recall@10 0.873**. See [docs/EVALUATION.md](docs/EVALUATION.md).
 - **Complexity:** Medium.
-- **Defer:** embeddings, ML ranking, images, nutrition.
+- **Notable:** token-pruned match index cut the clean pass ~40× (see
+  [docs/CHALLENGES.md](docs/CHALLENGES.md)).
+- **Deferred:** embeddings, ML ranking, images, nutrition.
 
 ## Phase 2 — FLAGSHIP: Ingredient Substitution (embeddings + graph) ⬜
 - **Goal:** valid substitutions, no LLM, benchmarked vs food2vec/GISMo.
