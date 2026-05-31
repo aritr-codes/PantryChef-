@@ -92,9 +92,9 @@ def replace_unicode_fractions(text: str) -> str:
 
 def _to_float(token: str) -> float:
     token = token.strip()
-    if " " in token:  # mixed number "1 1/2"
+    if len(token.split()) > 1:  # mixed number "1 1/2" (any whitespace)
         whole, frac = token.split(maxsplit=1)
-        return float(whole) + float(Fraction(frac))
+        return float(whole) + float(Fraction(frac.strip()))
     if "/" in token:
         return float(Fraction(token))
     return float(token)
