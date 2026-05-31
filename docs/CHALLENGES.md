@@ -40,6 +40,41 @@ workarounds. This is the honest engineering story recruiters remember.
   stable. Full-scale speedups (candidate caps, score short-circuit) deferred to
   Phase 3 when the retrieval layer gets its learned ranker.
 
+### Substitutes don't co-occur — word2vec gives the wrong signal   (2026-05-31, Phase 2)
+- **Problem:** word2vec trained on ingredient sets ranks complementary
+  ingredients (salt + pepper) as similar, not substitutable ones. The embedding
+  baseline (food2vec-style) was expected to be the flagship, but the co-occurrence
+  geometry is wrong for substitution.
+- **Constraint:** no labeled substitution pairs in the training data; only recipe
+  ingredient sets are available.
+- **Attempts:** tried embedding nearest-neighbours directly (MRR 0.290). Looked at
+  score-space hybrid — better recall, worse top-rank precision.
+- **Resolution:** second-order SPPMI graph. Substitutes share the same supporting
+  cast across recipes even though they don't appear together. Cosine similarity on
+  SPPMI rows (shared neighborhood) sidesteps the co-occurrence problem entirely.
+  Graph-only MRR 0.339 (+17% vs baseline). No training loop, deterministic, CPU-only.
+
+### Substitution gold-truth scarcity → mined fallback + coverage honesty   (2026-05-31, Phase 2)
+- **Problem:** the published food2vec / GISMo substitution test set requires a
+  manual download that cannot be scripted (terms gate). Without it, there is no
+  ground truth for eval.
+- **Constraint:** free-tier, no institutional access.
+- **Attempts:** tried automating the download — blocked by form gate. Converter
+  script `scripts/fetch_subs_eval.py` is wired and waiting.
+- **Resolution:** mined the gold set from our own corpus — near-duplicate recipes
+  differing by exactly one ingredient (`min_overlap=4`). Yields 116 directed pairs,
+  82 query keys. Fully reproducible. Coverage is 100% **by construction** (mining
+  from the same corpus guarantees all ingredients are known) — stated explicitly as
+  an artifact, not a strength. Numbers flagged as not paper-comparable.
+
+### Fusion formula bug — reciprocal-rank didn't reward consensus   (2026-05-31, Phase 2)
+- **Problem:** the original rank fusion used reciprocal-rank aggregation. A
+  candidate ranked #1 in one arm and #50 in the other outscored one ranked #2 in
+  *both* arms — penalising consistent mid-rank candidates.
+- **Resolution:** caught in peer review before results were recorded. Switched to
+  blended-average-rank (`rank_hybrid = alpha × rank_emb + (1-alpha) × rank_graph`,
+  alpha=0.5). The corrected formula rewards cross-arm consensus appropriately.
+
 ---
 
 _Anticipated (from design risk analysis):_

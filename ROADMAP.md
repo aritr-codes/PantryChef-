@@ -24,12 +24,17 @@ project. Status legend: ⬜ not started · 🟡 in progress · ✅ done.
   [docs/CHALLENGES.md](docs/CHALLENGES.md)).
 - **Deferred:** embeddings, ML ranking, images, nutrition.
 
-## Phase 2 — FLAGSHIP: Ingredient Substitution (embeddings + graph) ⬜
+## Phase 2 — FLAGSHIP: Ingredient Substitution (embeddings + graph) ✅
 - **Goal:** valid substitutions, no LLM, benchmarked vs food2vec/GISMo.
 - **Skills:** representation learning, graph methods, rigorous eval + ablation.
-- **Metrics:** precision@k / MRR vs published numbers; dietary-validity rate.
+- **Metrics (achieved, 28k RecipeNLG sample, mined gold n=82):**
+  graph-only **MRR 0.339** / **recall@10 0.475** (vs food2vec baseline 0.290 / 0.405);
+  dietary-validity **100%** (vegan, 45 substitutes). See [docs/EVALUATION.md](docs/EVALUATION.md).
+- **Notable:** flagship hypothesis confirmed — second-order context graph beats
+  food2vec embedding baseline; no GPU required (word2vec ~4s CPU, graph deterministic).
+  Published-gold comparison pending manual download (`scripts/fetch_subs_eval.py` wired).
 - **Complexity:** Medium-High.
-- **Defer:** recsys integration, serving.
+- **Defer:** recsys integration, serving, full-corpus run (2.23M), published-gold eval.
 
 ## Phase 3 — Recommendation & Ranking ⬜
 - **Goal:** learned constraint-aware ranking (LTR + optional two-tower).

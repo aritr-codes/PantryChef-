@@ -4,7 +4,7 @@
 > text or photo — and it finds makeable recipes, suggests **valid** ingredient
 > substitutions, and breaks down nutrition. The hard ML is built, not called.
 
-[![Phase](https://img.shields.io/badge/phase--1%20foundation-blue)](ROADMAP.md)
+[![Phase](https://img.shields.io/badge/phase--2%20flagship-blue)](ROADMAP.md)
 [![Python](https://img.shields.io/badge/python-3.11-blue)](.python-version)
 [![Lint](https://img.shields.io/badge/lint-ruff-261230)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -36,23 +36,30 @@ everything should be a model.
 
 ## Status
 
-**Phase 1 complete ✅** — data foundation, hybrid ingredient parser, and a
-set-overlap retrieval baseline, validated on real RecipeNLG data. See
-[ROADMAP.md](ROADMAP.md). Next: Phase 2 (flagship ingredient substitution).
+**Phase 2 complete ✅** — flagship ingredient substitution (second-order context
+graph beats food2vec baseline: MRR 0.339 vs 0.290, recall@10 0.475 vs 0.405),
+dietary guardrail 100% validity. Phase 1 data foundation, hybrid parser, and
+retrieval baseline also complete. See [ROADMAP.md](ROADMAP.md). Next: Phase 3
+(recommendation & ranking).
 
 ## Results
 
 _See [docs/EVALUATION.md](docs/EVALUATION.md) for protocol + provenance._
 
-| Phase | Task | Metric | PantryChef |
-| ----- | ---- | ------ | ---------- |
-| 1 ✅ | Ingredient parser | canonical-match F1 | **0.864** (target ≥0.85) |
-| 1 ✅ | Retrieval baseline | recall@10 | **0.873** |
-| 2 | Substitution | precision@5 | _tbd_ |
-| 3 | Recommendation | NDCG@10 | _tbd_ |
-| 5 | Detection | mAP@0.5 | _tbd_ |
+| Phase | Task | Metric | PantryChef | vs baseline |
+| ----- | ---- | ------ | ---------- | ----------- |
+| 1 ✅ | Ingredient parser | canonical-match F1 | **0.864** (target ≥0.85) | — |
+| 1 ✅ | Retrieval baseline | recall@10 | **0.873** | — |
+| 2 ✅ | Substitution (graph) | MRR | **0.339** | food2vec 0.290 (+17%) |
+| 2 ✅ | Substitution (graph) | recall@10 | **0.475** | food2vec 0.405 |
+| 2 ✅ | Substitution (hybrid) | recall@10 | **0.503** | — |
+| 2 ✅ | Dietary guardrail | validity % (vegan) | **100%** | — |
+| 3 | Recommendation | NDCG@10 | _tbd_ | — |
+| 5 | Detection | mAP@0.5 | _tbd_ | — |
 
-<sub>Phase 1 numbers: 50k-recipe RecipeNLG sample, min_count=5, seed=42.</sub>
+<sub>Phase 1: 50k-recipe RecipeNLG sample, min_count=5, seed=42. Phase 2: 28k-recipe
+sample, mined gold (116 pairs, n=82 queries), seed=42; not directly comparable to
+published food2vec / GISMo numbers (published-gold eval pending).</sub>
 
 ## Quickstart
 
