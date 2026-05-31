@@ -38,6 +38,44 @@ def cook_command(have: str, k: int, recipes_path: str | None = None) -> int:
     return 0
 
 
+def substitute_command(
+    ingredient: str,
+    diet: str | None,
+    k: int,
+    model_path: str | None = None,
+    recipe: str | None = None,
+) -> int:
+    """Find ingredient substitutes using the trained embedding model."""
+    from pantrychef.ingredients.vocab import load_vocabulary
+    from pantrychef.substitution.config import SubConfig
+    from pantrychef.substitution.cooccur import build_cooccurrence, sppmi
+    from pantrychef.substitution.dietary import DietTagger
+    from pantrychef.substitution.embeddings import EmbeddingModel
+    from pantrychef.substitution.graph import ContextGraph
+    from pantrychef.substitution.substitute import Substitutor
+
+    s = get_settings()
+    mpath = Path(model_path or (s.models_dir / "substitution" / "word2vec.kv"))
+    if not mpath.exists():
+        print(f"Substitution model not found at {mpath}. Run scripts/train_substitution.py first.")
+        return 1
+    recipes_path = s.processed_dir / "recipes.jsonl"
+    vocab = load_vocabulary(s.processed_dir / "vocab.json")
+    emb = EmbeddingModel.load(mpath)
+    recipes = load_recipes(recipes_path)
+    cmat, _, _, _ = build_cooccurrence(recipes, vocab)
+    graph = ContextGraph(sppmi(cmat), vocab, cmat, lam=SubConfig().lam)
+    sub = Substitutor(emb=emb, graph=graph, tagger=DietTagger(known=vocab), cfg=SubConfig(k=k))
+    ctx = [c.strip() for c in recipe.split(",") if c.strip()] if recipe else None
+    results = sub.substitutes(ingredient, diet=diet, recipe=ctx, k=max(k, 0))
+    if not results:
+        print(f"No substitutes found for '{ingredient}'" + (f" ({diet})" if diet else "") + ".")
+        return 0
+    for r in results:
+        print(f"[{r.score:6.3f}] {r.ingredient}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pantrychef", description="Pantry-aware recipe finder.")
     parser.add_argument("--version", action="version", version=f"pantrychef {__version__}")
@@ -48,10 +86,30 @@ def main(argv: list[str] | None = None) -> int:
     cook.add_argument("--k", type=int, default=5, help="How many recipes to show.")
     cook.add_argument("--recipes", default=None, help="Path to recipes.jsonl.")
 
+    sub_p = sub.add_parser("substitute", help="Find ingredient substitutes.")
+    sub_p.add_argument("ingredient", help="Ingredient to replace.")
+    sub_p.add_argument(
+        "--diet", default=None, choices=["vegan", "vegetarian", "gluten_free", "dairy_free"]
+    )
+    sub_p.add_argument("--k", type=int, default=5)
+    sub_p.add_argument(
+        "--in-recipe", dest="recipe", default=None, help="Comma-separated recipe context."
+    )
+    sub_p.add_argument("--model", default=None, help="Path to word2vec.kv.")
+
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     if args.command == "cook":
         return cook_command(have=args.have, k=args.k, recipes_path=args.recipes)
+
+    if args.command == "substitute":
+        return substitute_command(
+            ingredient=args.ingredient,
+            diet=args.diet,
+            k=args.k,
+            model_path=args.model,
+            recipe=args.recipe,
+        )
 
     print(f"PantryChef v{__version__}. Try: pantrychef cook --have eggs,flour,milk")
     return 0
