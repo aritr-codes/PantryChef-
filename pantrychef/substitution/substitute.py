@@ -6,7 +6,12 @@ two arms live on different scales and per-query min-max amplifies noise.
 rank-disagreement (lower = more consistent across arms), then by best individual
 rank, then by name for full determinism. The dietary mask is applied LAST so the
 guardrail is 100% by construction. ``rrf`` provides a Reciprocal Rank Fusion
-alternative when called directly. Optional gated recipe-context re-rank (future).
+alternative when called directly.
+
+Gated recipe-context re-rank (``SubConfig.context_weight``) is OFF by default
+(``context_weight=0``). When enabled it boosts candidates that fit the rest of
+the recipe using the embedding arm's pairwise similarity, operating on the
+already-fused, already-masked list so the dietary guardrail is never bypassed.
 """
 
 from __future__ import annotations
@@ -138,6 +143,17 @@ class Substitutor:
         fused = [(it, s) for it, s in fused if canonicalize(it) != ing]
         fused = _mask(fused, self.tagger, diet)
 
+        # Gated recipe-context re-rank: only active when context_weight > 0.
+        if (
+            recipe
+            and self.cfg.context_weight > 0
+            and self.emb is not None
+            and hasattr(self.emb, "similarity")
+        ):
+            # Exclude the queried ingredient from context ("rest of the recipe").
+            ctx = [canonicalize(c) for c in recipe if canonicalize(c) != ing]
+            fused = _context_rerank(fused, ctx, self.emb, self.cfg.context_weight)
+
         return [
             Substitute(ingredient=it, score=float(s), dietary_valid=True, arm="hybrid")
             for it, s in fused[:k]
@@ -151,3 +167,36 @@ def _mask(
 ) -> list[tuple[str, float]]:
     """Remove candidates that fail the dietary validity check."""
     return [(it, s) for it, s in candidates if tagger.is_valid(it, diet)]
+
+
+def _context_rerank(
+    candidates: Sequence[tuple[str, float]],
+    context: Sequence[str],
+    emb: Arm,
+    weight: float,
+) -> list[tuple[str, float]]:
+    """Re-rank ``candidates`` by blending fused rank position with recipe context fit.
+
+    Uses rank reciprocal (1 / (rank + 1)) as the base signal so that the
+    original fused order anchors the result.  The context fit is the mean
+    pairwise similarity between the candidate and every *in-vocabulary* context
+    ingredient — OOV entries are excluded from both numerator and denominator
+    to avoid diluting the signal with uninformative zeros.  Duplicate context
+    tokens are also deduplicated before scoring.
+
+    The gate (``context_weight > 0``) and presence of ``similarity`` are
+    already checked by the caller; this function assumes both hold.
+    """
+    if not context:
+        return list(candidates)
+    ctx_dedup = list(dict.fromkeys(context))  # preserve order, remove duplicates
+    rescored = []
+    for rank, (it, _) in enumerate(candidates):
+        base = 1.0 / (rank + 1)  # preserve fused order as the base signal
+        # Compute similarity once per pair; exclude OOV pairs (similarity == 0.0)
+        # so that missing-vocab terms don't dilute the mean.
+        pair_sims = [s for c in ctx_dedup if (s := emb.similarity(it, c)) != 0.0]  # type: ignore[attr-defined]
+        fit = sum(pair_sims) / len(pair_sims) if pair_sims else 0.0
+        rescored.append((it, base + weight * fit))
+    rescored.sort(key=lambda x: (-x[1], x[0]))
+    return rescored

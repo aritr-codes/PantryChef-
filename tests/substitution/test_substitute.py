@@ -48,3 +48,31 @@ def test_substitutor_masks_and_returns_types() -> None:
     assert all(o.dietary_valid for o in out)
     assert all(o.arm == "hybrid" for o in out)
     assert len(out) == 2
+
+
+def test_context_rerank_off_by_default_no_change() -> None:
+    from pantrychef.substitution.config import SubConfig
+
+    emb = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    graph = _FakeArm([("oil", 0.9), ("margarine", 0.8)])
+    s = Substitutor(emb=emb, graph=graph, tagger=_FakeTagger(), cfg=SubConfig(context_weight=0.0))
+    base = s.substitutes("butter", k=2)
+    with_recipe = s.substitutes("butter", recipe=["flour", "egg"], k=2)
+    assert [o.ingredient for o in base] == [o.ingredient for o in with_recipe]
+
+
+def test_context_rerank_applies_when_enabled() -> None:
+    from pantrychef.substitution.config import SubConfig
+
+    class _SimArm:
+        def neighbors(self, ingredient, k=5):
+            return [("oil", 0.5), ("margarine", 0.5)][:k]
+
+        def similarity(self, a, b):
+            # margarine fits "flour" context strongly; oil does not
+            return {("margarine", "flour"): 1.0}.get((a, b), 0.0)
+
+    s = Substitutor(emb=_SimArm(), graph=_SimArm(), tagger=_FakeTagger(),
+                    cfg=SubConfig(alpha=1.0, context_weight=1.0))
+    out = s.substitutes("butter", recipe=["flour"], k=2)
+    assert out[0].ingredient == "margarine"  # context boost wins the tie

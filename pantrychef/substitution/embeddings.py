@@ -54,6 +54,15 @@ class EmbeddingModel:
             return []
         return [(w, float(s)) for w, s in self._wv.most_similar(ingredient, topn=k)]
 
+    def similarity(self, a: str, b: str) -> float:
+        """Return cosine similarity between ``a`` and ``b``.
+
+        Returns 0.0 if either token is absent from the vocabulary.
+        """
+        if a not in self._wv or b not in self._wv:
+            return 0.0
+        return float(self._wv.similarity(a, b))
+
     def save(self, path: str | Path) -> None:
         """Persist the KeyedVectors to *path* (gensim native format)."""
         p = Path(path)
