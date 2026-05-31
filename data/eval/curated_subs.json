@@ -1,0 +1,11 @@
+{
+  "butter": ["olive oil", "coconut oil", "margarine", "applesauce"],
+  "buttermilk": ["yogurt", "milk", "sour cream"],
+  "egg": ["applesauce", "flax", "banana", "yogurt"],
+  "milk": ["soy milk", "almond milk", "oat milk", "coconut milk"],
+  "sugar": ["honey", "maple syrup", "agave"],
+  "sour cream": ["yogurt", "creme fraiche"],
+  "heavy cream": ["coconut cream", "evaporated milk"],
+  "cornstarch": ["arrowroot", "flour"],
+  "vegetable oil": ["canola oil", "olive oil", "coconut oil"]
+}
