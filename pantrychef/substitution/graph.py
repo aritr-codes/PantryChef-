@@ -1,0 +1,81 @@
+"""Second-order context graph — the flagship substitution arm.
+
+score(a, b) = cos(SPPMI_row_a, SPPMI_row_b) - lam * soft_penalty(cooccur(a, b))
+
+Substitutes share co-occurrence neighborhoods (similar SPPMI rows) but rarely
+co-occur directly. The penalty is *soft* (normalized co-occurrence, not a hard
+cut) so pairs that sometimes appear together (butter+oil) aren't zeroed.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+import numpy as np
+from scipy import sparse
+
+from pantrychef.substitution.cooccur import l2norm_rows
+
+
+class ContextGraph:
+    """Second-order ingredient graph backed by SPPMI cosine similarity.
+
+    Parameters
+    ----------
+    sppmi_matrix:
+        Sparse SPPMI matrix of shape (|vocab|, |vocab|), e.g. from
+        :func:`pantrychef.substitution.cooccur.sppmi`.
+    vocab:
+        Ordered vocabulary matching the matrix row/column indices.
+    cooccur:
+        Raw co-occurrence matrix (same shape) used to penalise direct
+        co-occurrence (complements).
+    lam:
+        Co-occurrence penalty weight in [0, 1]. ``lam=0`` gives pure
+        second-order cosine similarity; ``lam=1`` gives maximum penalty.
+    """
+
+    def __init__(
+        self,
+        sppmi_matrix: sparse.csr_matrix,
+        vocab: Sequence[str],
+        cooccur: sparse.csr_matrix,
+        lam: float = 0.5,
+    ) -> None:
+        self.vocab = list(vocab)
+        self.idx = {w: i for i, w in enumerate(self.vocab)}
+        self._mn = l2norm_rows(sppmi_matrix).tocsr()
+        self._c = cooccur.tocsr()
+        self.lam = lam
+
+    def neighbors(
+        self, ingredient: str, k: int = 5, lam: float | None = None
+    ) -> list[tuple[str, float]]:
+        """Return the top-k substitution candidates for *ingredient*.
+
+        Parameters
+        ----------
+        ingredient:
+            Query ingredient (must be in vocab). Returns ``[]`` if unknown.
+        k:
+            Number of neighbors to return.
+        lam:
+            Override the instance-level lambda for this call only.
+
+        Returns
+        -------
+        List of ``(name, score)`` tuples sorted by descending score. The query
+        ingredient itself is excluded. Returns ``[]`` for unknown ingredients.
+        """
+        i = self.idx.get(ingredient)
+        if i is None:
+            return []
+        lam = self.lam if lam is None else lam
+        sim = np.asarray((self._mn @ self._mn[i].T).toarray()).ravel()
+        crow = np.asarray(self._c[i].toarray()).ravel().astype(float)
+        cmax = crow.max()
+        penalty = crow / cmax if cmax > 0 else crow
+        score = sim - lam * penalty
+        score[i] = -np.inf
+        order = np.argsort(-score)[:k]
+        return [(self.vocab[j], float(score[j])) for j in order if np.isfinite(score[j])]
