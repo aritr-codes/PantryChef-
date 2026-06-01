@@ -6,8 +6,10 @@ prints metrics with coverage. Also reports dietary-validity on the curated set.
 
 from __future__ import annotations
 
+import argparse
 import dataclasses
 from collections.abc import Sequence
+from pathlib import Path
 
 from pantrychef.common import get_logger
 from pantrychef.config import get_settings
@@ -22,6 +24,23 @@ from pantrychef.substitution.substitute import Substitutor
 from pantrychef.substitution.train import Artifacts
 
 log = get_logger(__name__)
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse CLI args. --gold overrides the gold CSV (default: mined gold);
+    --gold-name is a label for the log line."""
+    ap = argparse.ArgumentParser(description="Substitution ablation leaderboard.")
+    ap.add_argument(
+        "--gold",
+        default=None,
+        help="Path to a gold CSV (source,target). Default: mined subs_gold.csv",
+    )
+    ap.add_argument(
+        "--gold-name",
+        default="mined",
+        help="Label for the gold set in the log output.",
+    )
+    return ap.parse_args(argv)
 
 
 def run_ablation(
@@ -65,7 +84,7 @@ def run_ablation(
     return rows
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint: load artifacts + gold, run ablation, report metrics."""
     s = get_settings()
     from pantrychef.data.store import load_recipes
@@ -75,8 +94,9 @@ def main() -> int:
     from pantrychef.substitution.embeddings import EmbeddingModel
     from pantrychef.substitution.graph import ContextGraph
 
+    args = parse_args(argv)
     model = s.models_dir / "substitution" / "word2vec.kv"
-    gold_csv = s.data_dir / "eval" / "subs_gold.csv"
+    gold_csv = Path(args.gold) if args.gold else (s.data_dir / "eval" / "subs_gold.csv")
     if not model.exists() or not gold_csv.exists():
         log.error("Need %s and %s. Train + fetch gold first.", model, gold_csv)
         return 1
@@ -99,7 +119,7 @@ def main() -> int:
     gold = load_pairs_csv(gold_csv)
 
     cov = coverage_report([(a, b) for a, bs in gold.items() for b in bs], set(vocab))
-    log.info("Coverage: %s", {k: round(v, 3) for k, v in cov.items()})
+    log.info("[%s] Coverage: %s", args.gold_name, {k: round(v, 3) for k, v in cov.items()})
     for row in run_ablation(art, vocab, gold):
         log.info("%s", {k: (round(v, 4) if isinstance(v, float) else v) for k, v in row.items()})
 
