@@ -18,7 +18,9 @@ jobs:
         run: uv python install 3.11
 
       - name: Sync deps
-        run: uv sync --extra dev
+        # Tests cover the Phase-2 substitution arms, so CI needs the
+        # substitution extra (scipy/gensim/numpy/mlflow), not just dev.
+        run: uv sync --extra dev --extra substitution
 
       - name: Lint
         run: uv run ruff check .
