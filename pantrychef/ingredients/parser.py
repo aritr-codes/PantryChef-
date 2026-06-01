@@ -12,7 +12,7 @@ from pantrychef.common.types import ParsedIngredient
 from pantrychef.ingredients.normalize import canonicalize
 from pantrychef.ingredients.units import parse_quantity, parse_unit
 
-# Token -> vocab entries containing that token.
+# Rarest token -> vocab entries for which that word is the least-frequent token.
 MatchIndex = dict[str, list[str]]
 
 
@@ -45,7 +45,8 @@ def match_canonical(phrase: str, vocab: list[str], index: MatchIndex | None = No
     """Return the longest vocab phrase whose words are all present in `phrase`.
 
     Among all subset matches, pick the one with the most words, tie-broken by
-    longest string (order-independent). Pass a prebuilt `index` (from
+    longest string then by the entry string (lexicographically greatest),
+    making the result deterministic and identical across both paths. Pass a prebuilt `index` (from
     `build_match_index`) to prune candidates to entries registered under their
     rarest word; a full match's rarest word is guaranteed to be in `tokens`, so
     it is reached via that bucket. Without an index, falls back to a full O(V)
@@ -64,11 +65,11 @@ def match_canonical(phrase: str, vocab: list[str], index: MatchIndex | None = No
         seen: set[str] = set()
         candidates = [e for t in tokens for e in index.get(t, ()) if not (e in seen or seen.add(e))]
     best: str | None = None
-    best_key = (0, 0)
+    best_key: tuple[int, int, str] = (0, 0, "")
     for entry in candidates:
         words = entry.split()
         if words and all(w in tokens for w in words):
-            key = (len(words), len(entry))
+            key = (len(words), len(entry), entry)
             if key > best_key:
                 best_key = key
                 best = entry

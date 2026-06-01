@@ -105,3 +105,16 @@ def test_parse_with_index_matches_without() -> None:
     without = parse("2 cups all-purpose flour, sifted", VOCAB)
     assert with_idx == without
     assert with_idx.canonical == "all purpose flour"
+
+
+def test_match_index_equivalence_tied_scores() -> None:
+    # Two entries with identical (word_count, byte_length) both match the
+    # phrase. The indexed path and the full scan MUST agree on the winner, and
+    # the result must be deterministic (independent of set iteration order).
+    vocab = ["goat cheese", "blue cheese"]
+    idx = build_match_index(vocab)
+    phrase = "goat blue cheese"
+    assert match_canonical(phrase, vocab, idx) == match_canonical(phrase, vocab)
+    # Deterministic winner: tie broken by entry string -> "goat cheese" > "blue cheese".
+    assert match_canonical(phrase, vocab, idx) == "goat cheese"
+    assert match_canonical(phrase, vocab) == "goat cheese"
