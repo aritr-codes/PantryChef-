@@ -73,9 +73,13 @@ def _extract_pairs(records: list) -> list[tuple[str, str]]:
     pairs: list[tuple[str, str]] = []
     for rec in records:
         subs = rec.get("subs") if isinstance(rec, dict) else None
-        if not subs or len(subs) != 2:
+        if not subs:
             continue
-        src, tgt = subs
+        try:
+            src, tgt = subs
+        except (TypeError, ValueError):
+            # Not a 2-element iterable (schema drift) — skip rather than crash.
+            continue
         pairs.append((str(src), str(tgt)))
     return pairs
 
