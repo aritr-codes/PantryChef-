@@ -13,10 +13,9 @@ def test_run_ablation_returns_rows() -> None:
     vocab = ["butter", "oil", "flour", "egg", "milk"]
     canonical_b = ["butter", "flour", "egg", "milk"]
     canonical_o = ["oil", "flour", "egg", "milk"]
-    recipes = (
-        [Recipe(recipe_id=f"b{i}", title="t", canonical=canonical_b) for i in range(15)]
-        + [Recipe(recipe_id=f"o{i}", title="t", canonical=canonical_o) for i in range(15)]
-    )
+    recipes = [Recipe(recipe_id=f"b{i}", title="t", canonical=canonical_b) for i in range(15)] + [
+        Recipe(recipe_id=f"o{i}", title="t", canonical=canonical_o) for i in range(15)
+    ]
     art = train_artifacts(recipes, vocab, SubConfig(dims=16, window=10, epochs=2))
     gold = {"butter": {"oil"}}
     rows = run_ablation(art, vocab, gold, alphas=(1.0, 0.0, 0.5))

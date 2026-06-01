@@ -66,8 +66,11 @@ def substitute_command(
     cmat, _, _, _ = build_cooccurrence(recipes, vocab)
     cfg = SubConfig(k=k)
     graph = ContextGraph(
-        sppmi(cmat, cfg.sppmi_shift), vocab, cmat,
-        lam=cfg.lam, overlap_shrink=cfg.overlap_shrink,
+        sppmi(cmat, cfg.sppmi_shift),
+        vocab,
+        cmat,
+        lam=cfg.lam,
+        overlap_shrink=cfg.overlap_shrink,
     )
     sub = Substitutor(emb=emb, graph=graph, tagger=DietTagger(known=vocab), cfg=cfg)
     ctx = [c.strip() for c in recipe.split(",") if c.strip()] if recipe else None

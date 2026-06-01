@@ -48,9 +48,7 @@ def mrr(preds: Sequence[str], gold: set[str]) -> float:
     return 0.0
 
 
-def coverage_report(
-    gold_pairs: Sequence[tuple[str, str]], vocab: set[str]
-) -> dict[str, float]:
+def coverage_report(gold_pairs: Sequence[tuple[str, str]], vocab: set[str]) -> dict[str, float]:
     """Report how much of the gold benchmark is reachable via vocab.
 
     Args:

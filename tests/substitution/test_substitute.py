@@ -72,13 +72,18 @@ def test_context_rerank_applies_when_enabled() -> None:
             # margarine fits "flour" context strongly; oil does not
             return {("margarine", "flour"): 1.0}.get((a, b), 0.0)
 
-    s = Substitutor(emb=_SimArm(), graph=_SimArm(), tagger=_FakeTagger(),
-                    cfg=SubConfig(alpha=1.0, context_weight=1.0))
+    s = Substitutor(
+        emb=_SimArm(),
+        graph=_SimArm(),
+        tagger=_FakeTagger(),
+        cfg=SubConfig(alpha=1.0, context_weight=1.0),
+    )
     out = s.substitutes("butter", recipe=["flour"], k=2)
     assert out[0].ingredient == "margarine"  # context boost wins the tie
 
 
 # ── Fix 1: negative / zero k guard ─────────────────────────────────────────
+
 
 def test_substitutes_zero_k_returns_empty() -> None:
     from pantrychef.substitution.config import SubConfig
@@ -99,6 +104,7 @@ def test_substitutes_negative_k_returns_empty() -> None:
 
 
 # ── Fix 4: accurate arm provenance from alpha ───────────────────────────────
+
 
 def test_arm_provenance_emb_only() -> None:
     from pantrychef.substitution.config import SubConfig

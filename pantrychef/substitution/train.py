@@ -38,9 +38,7 @@ class Artifacts:
         )
 
 
-def train_artifacts(
-    recipes: Sequence[Recipe], vocab: Sequence[str], cfg: SubConfig
-) -> Artifacts:
+def train_artifacts(recipes: Sequence[Recipe], vocab: Sequence[str], cfg: SubConfig) -> Artifacts:
     """Train both substitution arms and return a ready-to-use Artifacts container.
 
     Parameters

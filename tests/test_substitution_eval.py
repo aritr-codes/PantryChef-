@@ -54,6 +54,7 @@ def test_dietary_validity() -> None:
 
 # ── Fix 3: vacuous result when substitutor yields nothing locks contract ─────
 
+
 def test_dietary_validity_empty_substitutor_returns_vacuous_rate() -> None:
     """When the substitutor returns no subs at all, rate=1.0 and total=0.0."""
 

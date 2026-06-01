@@ -80,9 +80,18 @@ def test_match_index_equivalence_common_tokens() -> None:
     # many entries share common words — this is the property the full-corpus
     # speedup depends on.
     vocab = [
-        "cheese", "cream cheese", "cheddar cheese", "blue cheese",
-        "goat cheese", "cheese sauce", "tomato sauce", "soy sauce",
-        "sauce", "cream", "tomato", "cheddar cheese sauce",
+        "cheese",
+        "cream cheese",
+        "cheddar cheese",
+        "blue cheese",
+        "goat cheese",
+        "cheese sauce",
+        "tomato sauce",
+        "soy sauce",
+        "sauce",
+        "cream",
+        "tomato",
+        "cheddar cheese sauce",
     ]
     idx = build_match_index(vocab)
     phrases = [

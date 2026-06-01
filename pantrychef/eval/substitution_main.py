@@ -88,8 +88,11 @@ def main() -> int:
     art = Artifacts(
         embeddings=EmbeddingModel.load(model),
         graph=ContextGraph(
-            sppmi(cmat, cfg.sppmi_shift), vocab, cmat,
-            lam=cfg.lam, overlap_shrink=cfg.overlap_shrink,
+            sppmi(cmat, cfg.sppmi_shift),
+            vocab,
+            cmat,
+            lam=cfg.lam,
+            overlap_shrink=cfg.overlap_shrink,
         ),
         cfg=cfg,
     )
@@ -102,9 +105,7 @@ def main() -> int:
 
     curated = load_curated(s.data_dir / "eval" / "curated_subs.json")
     tagger = DietTagger(known=vocab)
-    rate, n = dietary_validity(
-        art.substitutor(vocab), tagger, [(q, "vegan") for q in curated], k=5
-    )
+    rate, n = dietary_validity(art.substitutor(vocab), tagger, [(q, "vegan") for q in curated], k=5)
     log.info(
         "Dietary-validity (vegan) = %.3f over %d subs; tag-coverage=%.3f",
         rate,

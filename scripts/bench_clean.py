@@ -47,8 +47,7 @@ def main() -> int:
     eta_min = FULL_CORPUS_ROWS / rpm
     print(f"cleaned {n} recipes in {dt:.1f}s -> {rpm:,.0f} recipes/min")
     print(
-        f"projected full corpus ({FULL_CORPUS_ROWS:,}): {eta_min:.1f} min "
-        f"({eta_min / 60:.1f} hr)"
+        f"projected full corpus ({FULL_CORPUS_ROWS:,}): {eta_min:.1f} min ({eta_min / 60:.1f} hr)"
     )
     return 0
 

@@ -32,6 +32,7 @@ def _graph(lam: float = 0.5) -> ContextGraph:
 # Existing behavioural tests (kept verbatim)
 # ---------------------------------------------------------------------------
 
+
 def test_substitute_beats_complement() -> None:
     nbrs = _graph().neighbors("butter", k=4)
     names = [n for n, _ in nbrs]
@@ -55,6 +56,7 @@ def test_lambda_zero_is_pure_context() -> None:
 # Fix 1 — k<=0 guard
 # ---------------------------------------------------------------------------
 
+
 def test_k_zero_or_negative() -> None:
     g = _graph()
     assert g.neighbors("butter", k=0) == []
@@ -65,14 +67,13 @@ def test_k_zero_or_negative() -> None:
 # Fix 2 — zero-context guard
 # ---------------------------------------------------------------------------
 
+
 def test_zero_context_returns_empty() -> None:
     """An ingredient that appears only in singleton recipes has an all-zero
     SPPMI row (no co-occurrence partners, so no positive PMI).  neighbors()
     must return [] rather than meaningless zero-scored results."""
     vocab_solo = ["butter", "flour", "egg", "milk", "lard"]
-    recipes_solo = _BUTTER_RECIPES + [
-        Recipe(recipe_id="solo0", title="t", canonical=["lard"])
-    ]
+    recipes_solo = _BUTTER_RECIPES + [Recipe(recipe_id="solo0", title="t", canonical=["lard"])]
     cmat, _, _, _ = build_cooccurrence(recipes_solo, vocab_solo)
     m = sppmi(cmat, shift=1.0)
 
@@ -90,6 +91,7 @@ def test_zero_context_returns_empty() -> None:
 # Fix 3 — shape validation in __init__
 # ---------------------------------------------------------------------------
 
+
 def test_shape_mismatch_raises() -> None:
     """Passing matrices whose shape disagrees with vocab length must raise."""
     m3 = eye(3, format="csr")
@@ -101,6 +103,7 @@ def test_shape_mismatch_raises() -> None:
 def test_rectangular_matrix_raises() -> None:
     """Non-square (rectangular) matrices must also be rejected."""
     from scipy.sparse import csr_matrix
+
     m_rect = csr_matrix((3, 4))
     vocab3 = ["a", "b", "c"]
     m_sq3 = eye(3, format="csr")
@@ -117,16 +120,27 @@ VOCAB2 = ["butter", "oil", "shortening", "flour", "egg", "milk"]
 # shortening: same flour/egg/milk context AS oil, but ALSO co-occurs with butter
 #   directly in 10 extra recipes — so its direct co-occurrence penalty > 0.
 RECIPES2 = (
-    [Recipe(recipe_id=f"b{i}", title="t", canonical=["butter", "flour", "egg", "milk"])
-     for i in range(20)]
-    + [Recipe(recipe_id=f"o{i}", title="t", canonical=["oil", "flour", "egg", "milk"])
-       for i in range(20)]
-    + [Recipe(recipe_id=f"s{i}", title="t", canonical=["shortening", "flour", "egg", "milk"])
-       for i in range(20)]
+    [
+        Recipe(recipe_id=f"b{i}", title="t", canonical=["butter", "flour", "egg", "milk"])
+        for i in range(20)
+    ]
+    + [
+        Recipe(recipe_id=f"o{i}", title="t", canonical=["oil", "flour", "egg", "milk"])
+        for i in range(20)
+    ]
+    + [
+        Recipe(recipe_id=f"s{i}", title="t", canonical=["shortening", "flour", "egg", "milk"])
+        for i in range(20)
+    ]
     # shortening co-occurs with butter directly:
-    + [Recipe(recipe_id=f"bs{i}", title="t",
-              canonical=["butter", "shortening", "flour", "egg", "milk"])
-       for i in range(10)]
+    + [
+        Recipe(
+            recipe_id=f"bs{i}",
+            title="t",
+            canonical=["butter", "shortening", "flour", "egg", "milk"],
+        )
+        for i in range(10)
+    ]
 )
 
 
@@ -190,6 +204,7 @@ def test_svd_model_neighbors() -> None:
 # Overlap-shrinkage tests
 # ---------------------------------------------------------------------------
 
+
 def _make_overlap_matrices():
     """Build a deterministic 4x4 SPPMI + cooccur by hand.
 
@@ -208,16 +223,19 @@ def _make_overlap_matrices():
     """
     vocab = ["A", "B", "C", "D"]
     # 4x4 SPPMI matrix (row = ingredient, col = context dimension = same vocab here)
-    data = np.array([
-        # A: cols 0,3
-        [1.0, 0.0, 0.0, 2.0],
-        # B: cols 0,1,2,3
-        [2.0, 2.0, 2.0, 2.0],
-        # C: col 3 only
-        [0.0, 0.0, 0.0, 4.0],
-        # D: zero row
-        [0.0, 0.0, 0.0, 0.0],
-    ], dtype=np.float64)
+    data = np.array(
+        [
+            # A: cols 0,3
+            [1.0, 0.0, 0.0, 2.0],
+            # B: cols 0,1,2,3
+            [2.0, 2.0, 2.0, 2.0],
+            # C: col 3 only
+            [0.0, 0.0, 0.0, 4.0],
+            # D: zero row
+            [0.0, 0.0, 0.0, 0.0],
+        ],
+        dtype=np.float64,
+    )
     sppmi = sp.csr_matrix(data)
     # cooccur: all zeros (no penalty)
     cooccur = sp.csr_matrix((4, 4), dtype=np.float64)

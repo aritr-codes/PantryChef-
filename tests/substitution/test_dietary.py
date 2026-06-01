@@ -58,6 +58,7 @@ def test_coverage_fraction() -> None:
 
 # ── Fix 2: None diet = no constraint; unknown non-empty diet = ValueError ────
 
+
 def test_is_valid_none_diet_always_true() -> None:
     t = _tagger()
     assert t.is_valid("olive oil", None) is True
