@@ -47,9 +47,10 @@ coverage scoring. This is the number Phase 3's learned ranker must beat._
 > recipes differing by exactly one ingredient): 116 directed pairs, 82 evaluated
 > query keys. Coverage is 100% **by construction** (an artifact of mining from
 > the same corpus — not a quality claim). This is the reproducible fallback;
-> comparison against the published food2vec / GISMo gold set is wired via
-> `scripts/fetch_subs_eval.py` and pending a manual download. Numbers are
-> **NOT directly comparable to published food2vec / GISMo results.**
+> comparison against the **published GISMo gold set** is implemented via
+> `scripts/fetch_gismo_gold.py` — see the "vs GISMo published benchmark" table
+> below. Mined-gold numbers here are **NOT directly comparable to published
+> food2vec / GISMo results** (different gold, 100%-by-construction coverage).
 
 #### Ablation (n=82 queries)
 
@@ -94,12 +95,33 @@ the same scale), not an absolute gain over the 28k sample.
 _Tag-coverage is 100% only because the curated set uses common, well-tagged
 ingredients. Full-vocab coverage is lower — Phase 4 fixes with an ontology._
 
-#### Published reference (pending manual download)
+#### vs GISMo published benchmark (CC BY-NC 4.0)
 
-| Metric | food2vec | GISMo | PantryChef (graph, mined gold) |
-| ------ | -------- | ----- | ------------------------------ |
-| MRR | _pending manual download_ | _pending_ | 0.339 |
-| P@5 | _pending_ | _pending_ | 0.105 |
+> **Source:** Fatemi et al., "Learning to Substitute Ingredients in Recipes"
+> (arXiv:2302.07960), facebookresearch/gismo. Gold = their `test_comments_subs.pkl`
+> (`subs` source→target name pairs), canonicalized into our ingredient space via
+> `scripts/fetch_gismo_gold.py`. Their data is **CC BY-NC 4.0** and is **not
+> committed** (regenerate locally; the script + derived CSV are gitignored).
+> **Coverage caveat:** their Recipe1M vocab ≠ our RecipeNLG 30,481 vocab, so only
+> the covered subset is scored — **pair_coverage = 78.5%** (5,359/6,829 pairs;
+> n=1,391 query keys); uncovered pairs are skipped, **not** penalized. Numbers are
+> **our arms on their gold**, NOT a reproduction of GISMo's own model.
+
+| Arm | MRR | R@5 | R@10 | Coverage | Run |
+| --- | --- | --- | ---- | -------- | --- |
+| emb-only (food2vec baseline) | 0.057 | 0.038 | 0.064 | 78.5% | gismo, 2026-06-01 |
+| graph-only + overlap-shrink (β=100) | 0.076 | 0.050 | 0.077 | 78.5% | gismo, 2026-06-01 |
+| **hybrid (alpha=0.5) + shrink ★** | **0.083** | **0.060** | **0.087** | 78.5% | gismo, 2026-06-01 |
+
+★ **Flagship arm-ordering holds on an independent published benchmark:**
+graph-only MRR 0.076 > emb-only 0.057 (+34%); hybrid best at 0.083 / R@10 0.087 —
+the **same** ranking as our mined gold, now on Recipe1M-sourced pairs we did not
+mine. Absolute values sit far below the mined-gold rows because this gold is
+independently sourced (no construction-coverage; a strictly harder task) and only
+the covered 78.5% is scored. _GISMo's own headline metric is MRR (arXiv:2302.07960
+§4); their model's number is read from the paper, **not** reproduced here — this is
+arm-vs-their-gold on the covered subset, a "benchmarked against published gold"
+claim, not a head-to-head model reproduction._
 
 ### Phase 3 — Recommendation
 | Metric | Baseline (P1 overlap) | Current | Run |
