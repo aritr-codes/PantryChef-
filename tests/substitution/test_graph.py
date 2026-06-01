@@ -193,59 +193,18 @@ def test_svd_model_neighbors() -> None:
 def _make_overlap_matrices():
     """Build a deterministic 4x4 SPPMI + cooccur by hand.
 
-    Vocab: ["A", "B", "C", "D"]
-    A is the query.
-    B shares 3 context columns with A  -> high overlap candidate.
-    C shares 0 context columns with A  -> low overlap, but has high raw cosine
-       (we engineer this by giving C an identical normalised row via SPPMI
-       values that happen to align when normalised — easier: just use a dense
-       hand-crafted matrix).
-    D shares 1 context column with A   -> mid overlap.
+    Vocab ["A", "B", "C", "D"]; A is the query, cooccur all-zero (no penalty).
+    Rows are crafted so a HIGH-overlap candidate (B) has LOWER raw cosine than a
+    LOW-overlap candidate (C), letting us prove shrinkage flips the order:
+      - A: [1, 0, 0, 2]   A_norm = [1/√5, 0, 0, 2/√5]
+      - B: [2, 2, 2, 2]   ov=2 (cols 0,3)  cos(A,B) = 3/(2√5) ≈ 0.671
+      - C: [0, 0, 0, 4]   ov=1 (col 3)     cos(A,C) = 2/√5   ≈ 0.894
+      - D: [0, 0, 0, 0]   zero row (padding to 4x4)
 
-    We craft the SPPMI so that under legacy (no shrinkage):
-      cos(A, C) > cos(A, B)  [C outranks B]
-    And under shrinkage beta=10:
-      score(A, B) > score(A, C)  [B recovers lead]
-
-    Cosine is computed on l2-normalised rows.  We craft raw values so:
-      - A row: [3, 3, 3, 3] (all 4 context dims)
-      - B row: [3, 3, 3, 0] (shares cols 0,1,2 with A → ov=3)
-      - C row: [0, 0, 0, 9] (shares col 3 with A → ov=1, but large value
-                              → high raw cosine after normalisation)
-      - D row: [0, 0, 0, 3] (shares col 3 with A → ov=1, moderate cosine)
-
-    cos(A, B): A_norm=[1/2,1/2,1/2,1/2], B_norm=[1/√3,1/√3,1/√3,0]
-               dot = 3/(2√3) ≈ 0.866
-    cos(A, C): A_norm=[1/2]*4, C_norm=[0,0,0,1]
-               dot = 1/2 = 0.500
-    cos(A, D): A_norm=[1/2]*4, D_norm=[0,0,0,1]
-               dot = 1/2 = 0.500
-
-    Wait — that makes B rank above C even before shrinkage. Adjust so C has
-    higher raw cosine than B:
-
-      - A row: [2, 0, 0, 2]  (context cols 0 and 3)
-      - B row: [2, 2, 2, 2]  (all cols; shares col 0 and 3 with A → ov=2)
-      - C row: [0, 0, 0, 9]  (only col 3 → ov=1 with A)
-      - D row: [0, 0, 0, 0]  (no context — padding row so matrix is 4x4)
-
-    A_norm = [1/√2, 0, 0, 1/√2]
-    B_norm = [1/2, 1/2, 1/2, 1/2]  cos(A,B) = (1/√2)(1/2) + (1/√2)(1/2) = 1/√2 ≈ 0.707
-    C_norm = [0, 0, 0, 1]          cos(A,C) = 1/√2 ≈ 0.707  (same — need to break tie)
-
-    Adjust C to give strictly higher cosine:
-      - A row: [1, 0, 0, 2]   A_norm = [1/√5, 0, 0, 2/√5]
-      - B row: [2, 2, 2, 2]   B_norm = [1/2, 1/2, 1/2, 1/2]
-               cos(A,B) = (1/√5)(1/2) + (2/√5)(1/2) = 3/(2√5) ≈ 0.671   ov=2 (cols 0,3)
-      - C row: [0, 0, 0, 4]   C_norm = [0,0,0,1]
-               cos(A,C) = (2/√5)(1) = 2/√5 ≈ 0.894                        ov=1 (col 3 only)
-      - D row: [0, 0, 0, 0]   (zero row, padding)
-
-    Legacy: C (0.894) > B (0.671)  → C ranks above B.
+    Legacy (no shrinkage): C (0.894) > B (0.671) → C outranks B.
     With beta=10:
-      score(A,B) = 0.671 * 2/(2+10) = 0.671 * 0.167 ≈ 0.112
-      score(A,C) = 0.894 * 1/(1+10) = 0.894 * 0.091 ≈ 0.081
-    So B > C after shrinkage. ✓
+      score(A,B) = 0.671 * 2/(2+10) ≈ 0.112
+      score(A,C) = 0.894 * 1/(1+10) ≈ 0.081   → B recovers the lead. ✓
     """
     vocab = ["A", "B", "C", "D"]
     # 4x4 SPPMI matrix (row = ingredient, col = context dimension = same vocab here)

@@ -58,12 +58,12 @@ class ContextGraph:
         self._c = cooccur.tocsr()
         self.lam = lam
         self._beta = overlap_shrink
-        # Binary nonzero pattern for overlap counting (precomputed once).
+        # Binary nonzero pattern for overlap counting (precomputed once; only
+        # needed when shrinkage is active). `!= 0` drops any explicit zeros.
         if overlap_shrink > 0:
-            sp = sppmi_matrix.tocsr(copy=True)
-            sp.eliminate_zeros()
-            self._spb: sparse.csr_matrix | None = (sp != 0).astype(np.int32).tocsr()
-            self._spb.eliminate_zeros()
+            spb = (sppmi_matrix != 0).astype(np.int32).tocsr()
+            spb.eliminate_zeros()
+            self._spb: sparse.csr_matrix | None = spb
         else:
             self._spb = None
 
