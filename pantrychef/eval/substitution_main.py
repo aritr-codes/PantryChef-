@@ -87,7 +87,10 @@ def main() -> int:
     cfg = SubConfig()
     art = Artifacts(
         embeddings=EmbeddingModel.load(model),
-        graph=ContextGraph(sppmi(cmat, cfg.sppmi_shift), vocab, cmat, lam=cfg.lam),
+        graph=ContextGraph(
+            sppmi(cmat, cfg.sppmi_shift), vocab, cmat,
+            lam=cfg.lam, overlap_shrink=cfg.overlap_shrink,
+        ),
         cfg=cfg,
     )
     gold = load_pairs_csv(gold_csv)

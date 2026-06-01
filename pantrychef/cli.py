@@ -64,8 +64,12 @@ def substitute_command(
     emb = EmbeddingModel.load(mpath)
     recipes = load_recipes(recipes_path)
     cmat, _, _, _ = build_cooccurrence(recipes, vocab)
-    graph = ContextGraph(sppmi(cmat), vocab, cmat, lam=SubConfig().lam)
-    sub = Substitutor(emb=emb, graph=graph, tagger=DietTagger(known=vocab), cfg=SubConfig(k=k))
+    cfg = SubConfig(k=k)
+    graph = ContextGraph(
+        sppmi(cmat, cfg.sppmi_shift), vocab, cmat,
+        lam=cfg.lam, overlap_shrink=cfg.overlap_shrink,
+    )
+    sub = Substitutor(emb=emb, graph=graph, tagger=DietTagger(known=vocab), cfg=cfg)
     ctx = [c.strip() for c in recipe.split(",") if c.strip()] if recipe else None
     results = sub.substitutes(ingredient, diet=diet, recipe=ctx, k=max(k, 0))
     if not results:

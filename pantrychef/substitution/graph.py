@@ -42,7 +42,10 @@ class ContextGraph:
         vocab: Sequence[str],
         cooccur: sparse.csr_matrix,
         lam: float = 0.5,
+        overlap_shrink: float = 0.0,
     ) -> None:
+        if overlap_shrink < 0 or not np.isfinite(overlap_shrink):
+            raise ValueError(f"overlap_shrink must be >= 0 and finite; got {overlap_shrink}")
         n = len(vocab)
         if sppmi_matrix.shape != (n, n) or cooccur.shape != (n, n):
             raise ValueError(
@@ -54,6 +57,15 @@ class ContextGraph:
         self._mn = l2norm_rows(sppmi_matrix).tocsr()
         self._c = cooccur.tocsr()
         self.lam = lam
+        self._beta = overlap_shrink
+        # Binary nonzero pattern for overlap counting (precomputed once).
+        if overlap_shrink > 0:
+            sp = sppmi_matrix.tocsr(copy=True)
+            sp.eliminate_zeros()
+            self._spb: sparse.csr_matrix | None = (sp != 0).astype(np.int32).tocsr()
+            self._spb.eliminate_zeros()
+        else:
+            self._spb = None
 
     def neighbors(
         self, ingredient: str, k: int = 5, lam: float | None = None
@@ -83,6 +95,9 @@ class ContextGraph:
             return []
         lam = self.lam if lam is None else lam
         sim = np.asarray((self._mn @ self._mn[i].T).toarray()).ravel()
+        if self._beta > 0 and self._spb is not None:
+            ov = np.asarray((self._spb @ self._spb[i].T).toarray()).ravel().astype(float)
+            sim = sim * (ov / (ov + self._beta))
         crow = np.asarray(self._c[i].toarray()).ravel().astype(float)
         cmax = crow.max()
         penalty = crow / cmax if cmax > 0 else crow

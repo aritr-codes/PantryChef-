@@ -21,6 +21,8 @@ class SubConfig:
     sppmi_shift: float = 1.0  # shift k; 1.0 == plain PPMI
     svd_dims: int = 100
     lam: float = 0.5  # soft direct-co-occurrence penalty weight
+    # support-shrinkage beta; downweights low-overlap candidates; 0 = off/legacy
+    overlap_shrink: float = 100.0
     # fusion
     alpha: float = 0.5  # rank blend: 1.0 = emb-only, 0.0 = graph-only
     context_weight: float = 0.0  # gated recipe-context re-rank; 0 = off

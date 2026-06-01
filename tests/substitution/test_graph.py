@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
+import scipy.sparse as sp
 from scipy.sparse import eye
 
 from pantrychef.common.types import Recipe
@@ -182,3 +184,132 @@ def test_svd_model_neighbors() -> None:
     nbrs = model.neighbors("butter", k=2)
     assert all(n != "butter" for n, _ in nbrs)
     assert "oil" in [n for n, _ in nbrs]
+
+
+# ---------------------------------------------------------------------------
+# Overlap-shrinkage tests
+# ---------------------------------------------------------------------------
+
+def _make_overlap_matrices():
+    """Build a deterministic 4x4 SPPMI + cooccur by hand.
+
+    Vocab: ["A", "B", "C", "D"]
+    A is the query.
+    B shares 3 context columns with A  -> high overlap candidate.
+    C shares 0 context columns with A  -> low overlap, but has high raw cosine
+       (we engineer this by giving C an identical normalised row via SPPMI
+       values that happen to align when normalised — easier: just use a dense
+       hand-crafted matrix).
+    D shares 1 context column with A   -> mid overlap.
+
+    We craft the SPPMI so that under legacy (no shrinkage):
+      cos(A, C) > cos(A, B)  [C outranks B]
+    And under shrinkage beta=10:
+      score(A, B) > score(A, C)  [B recovers lead]
+
+    Cosine is computed on l2-normalised rows.  We craft raw values so:
+      - A row: [3, 3, 3, 3] (all 4 context dims)
+      - B row: [3, 3, 3, 0] (shares cols 0,1,2 with A → ov=3)
+      - C row: [0, 0, 0, 9] (shares col 3 with A → ov=1, but large value
+                              → high raw cosine after normalisation)
+      - D row: [0, 0, 0, 3] (shares col 3 with A → ov=1, moderate cosine)
+
+    cos(A, B): A_norm=[1/2,1/2,1/2,1/2], B_norm=[1/√3,1/√3,1/√3,0]
+               dot = 3/(2√3) ≈ 0.866
+    cos(A, C): A_norm=[1/2]*4, C_norm=[0,0,0,1]
+               dot = 1/2 = 0.500
+    cos(A, D): A_norm=[1/2]*4, D_norm=[0,0,0,1]
+               dot = 1/2 = 0.500
+
+    Wait — that makes B rank above C even before shrinkage. Adjust so C has
+    higher raw cosine than B:
+
+      - A row: [2, 0, 0, 2]  (context cols 0 and 3)
+      - B row: [2, 2, 2, 2]  (all cols; shares col 0 and 3 with A → ov=2)
+      - C row: [0, 0, 0, 9]  (only col 3 → ov=1 with A)
+      - D row: [0, 0, 0, 0]  (no context — padding row so matrix is 4x4)
+
+    A_norm = [1/√2, 0, 0, 1/√2]
+    B_norm = [1/2, 1/2, 1/2, 1/2]  cos(A,B) = (1/√2)(1/2) + (1/√2)(1/2) = 1/√2 ≈ 0.707
+    C_norm = [0, 0, 0, 1]          cos(A,C) = 1/√2 ≈ 0.707  (same — need to break tie)
+
+    Adjust C to give strictly higher cosine:
+      - A row: [1, 0, 0, 2]   A_norm = [1/√5, 0, 0, 2/√5]
+      - B row: [2, 2, 2, 2]   B_norm = [1/2, 1/2, 1/2, 1/2]
+               cos(A,B) = (1/√5)(1/2) + (2/√5)(1/2) = 3/(2√5) ≈ 0.671   ov=2 (cols 0,3)
+      - C row: [0, 0, 0, 4]   C_norm = [0,0,0,1]
+               cos(A,C) = (2/√5)(1) = 2/√5 ≈ 0.894                        ov=1 (col 3 only)
+      - D row: [0, 0, 0, 0]   (zero row, padding)
+
+    Legacy: C (0.894) > B (0.671)  → C ranks above B.
+    With beta=10:
+      score(A,B) = 0.671 * 2/(2+10) = 0.671 * 0.167 ≈ 0.112
+      score(A,C) = 0.894 * 1/(1+10) = 0.894 * 0.091 ≈ 0.081
+    So B > C after shrinkage. ✓
+    """
+    vocab = ["A", "B", "C", "D"]
+    # 4x4 SPPMI matrix (row = ingredient, col = context dimension = same vocab here)
+    data = np.array([
+        # A: cols 0,3
+        [1.0, 0.0, 0.0, 2.0],
+        # B: cols 0,1,2,3
+        [2.0, 2.0, 2.0, 2.0],
+        # C: col 3 only
+        [0.0, 0.0, 0.0, 4.0],
+        # D: zero row
+        [0.0, 0.0, 0.0, 0.0],
+    ], dtype=np.float64)
+    sppmi = sp.csr_matrix(data)
+    # cooccur: all zeros (no penalty)
+    cooccur = sp.csr_matrix((4, 4), dtype=np.float64)
+    return sppmi, cooccur, vocab
+
+
+def test_overlap_shrink_zero_is_legacy() -> None:
+    """ContextGraph(overlap_shrink=0.0) must produce byte-identical results to
+    the default (no overlap_shrink kwarg) — backward-compatibility lock."""
+    sppmi_mat, cooccur, vocab = _make_overlap_matrices()
+
+    g_default = ContextGraph(sppmi_mat, vocab, cooccur, lam=0.0)
+    g_explicit = ContextGraph(sppmi_mat, vocab, cooccur, lam=0.0, overlap_shrink=0.0)
+
+    nbrs_default = g_default.neighbors("A", k=3)
+    nbrs_explicit = g_explicit.neighbors("A", k=3)
+
+    assert nbrs_default == nbrs_explicit, (
+        f"overlap_shrink=0.0 must be identical to default: "
+        f"default={nbrs_default} explicit={nbrs_explicit}"
+    )
+
+
+def test_overlap_shrink_downweights_low_overlap() -> None:
+    """With beta=0 (legacy), low-overlap candidate C outranks high-overlap B.
+    With overlap_shrink=10 (beta=10), B must recover and rank above C.
+
+    See _make_overlap_matrices() docstring for the exact construction.
+    """
+    sppmi_mat, cooccur, vocab = _make_overlap_matrices()
+
+    g_legacy = ContextGraph(sppmi_mat, vocab, cooccur, lam=0.0, overlap_shrink=0.0)
+    g_shrink = ContextGraph(sppmi_mat, vocab, cooccur, lam=0.0, overlap_shrink=10.0)
+
+    nbrs_legacy = dict(g_legacy.neighbors("A", k=3))
+    nbrs_shrink = dict(g_shrink.neighbors("A", k=3))
+
+    # Under legacy: C must rank above B (C has higher raw cosine)
+    assert "B" in nbrs_legacy and "C" in nbrs_legacy, (
+        f"Legacy neighbors must include B and C: {nbrs_legacy}"
+    )
+    assert nbrs_legacy["C"] > nbrs_legacy["B"], (
+        f"Legacy: C (low-overlap, high cosine) must outscore B: "
+        f"C={nbrs_legacy['C']:.4f} B={nbrs_legacy['B']:.4f}"
+    )
+
+    # Under shrinkage: B (ov=2) must rank above C (ov=1)
+    assert "B" in nbrs_shrink and "C" in nbrs_shrink, (
+        f"Shrink neighbors must include B and C: {nbrs_shrink}"
+    )
+    assert nbrs_shrink["B"] > nbrs_shrink["C"], (
+        f"Shrinkage: B (high-overlap) must outscore C (low-overlap): "
+        f"B={nbrs_shrink['B']:.4f} C={nbrs_shrink['C']:.4f}"
+    )

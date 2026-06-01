@@ -59,5 +59,5 @@ def train_artifacts(
     wv = train_word2vec(IngredientCorpus(recipes, seed=cfg.seed), cfg)
     cmat, _, _, _ = build_cooccurrence(recipes, vocab)
     m = sppmi(cmat, shift=cfg.sppmi_shift)
-    graph = ContextGraph(m, list(vocab), cmat, lam=cfg.lam)
+    graph = ContextGraph(m, list(vocab), cmat, lam=cfg.lam, overlap_shrink=cfg.overlap_shrink)
     return Artifacts(embeddings=EmbeddingModel(wv), graph=graph, cfg=cfg)
