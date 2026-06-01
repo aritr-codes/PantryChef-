@@ -21,3 +21,20 @@ def test_run_ablation_returns_rows() -> None:
     rows = run_ablation(art, vocab, gold, alphas=(1.0, 0.0, 0.5))
     assert {r["arm"] for r in rows} == {"emb-only", "graph-only", "hybrid"}
     assert all("mrr" in r for r in rows)
+
+
+def test_parse_args_defaults_to_mined_gold() -> None:
+    from pantrychef.eval.substitution_main import parse_args
+
+    args = parse_args([])
+    assert args.gold is None  # None => main() uses the mined default path
+    assert args.gold_name == "mined"
+
+
+def test_parse_args_accepts_gold_override(tmp_path) -> None:
+    from pantrychef.eval.substitution_main import parse_args
+
+    p = tmp_path / "subs_gold_gismo.csv"
+    args = parse_args(["--gold", str(p), "--gold-name", "gismo"])
+    assert args.gold == str(p)
+    assert args.gold_name == "gismo"

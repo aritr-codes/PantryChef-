@@ -66,4 +66,10 @@ Thumbs.db
 *.swp
 *.swo
 
+# GISMo published benchmark (CC BY-NC 4.0 — do not commit their data or derivations;
+# regenerate via scripts/fetch_gismo_gold.py). Redundant with the data/*.pkl/*.csv
+# rules above, but kept explicit so the license obligation is unmissable.
+data/raw/gismo/
+data/eval/subs_gold_gismo.csv
+
 # NOTE: notebooks ARE committed (thin convention) — do not ignore *.ipynb
