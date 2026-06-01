@@ -25,10 +25,68 @@ workarounds. This is the honest engineering story recruiters remember.
   ingredient line — O(lines × V), with V in the thousands.
 - **Resolution:** Built a token→vocab-entries index once per vocab
   (`build_match_index`); each line now only checks entries sharing a word with
-  it. O(lines × candidates). Clean pass dropped **11m44s → 18s (~40×)**; full
-  corpus now ≈25 min. The pruned path is proven equivalent to the full scan by a
-  test (any full match has all its words in the line, so it is reached via every
-  one of its tokens).
+  it. O(lines × candidates). Clean pass dropped **11m44s → 18s (~40×)** on the
+  50k sample. The pruned path is proven equivalent to the full scan by a test
+  (any full match has all its words in the line, so it is reached via every one
+  of its tokens). ⚠️ The "≈25 min full corpus" estimate first recorded here was
+  extrapolated from the 2,067-term sample vocab and proved wrong by ~20× — see
+  the next entry.
+
+### Match index didn't scale to full-corpus vocab — superlinear blow-up   (2026-06-01, Phase 1)
+- **Problem:** The "~25 min full corpus" estimate above was extrapolated from the
+  50k sample (vocab 2,067) and was wrong by ~20×. On the real full 2.23M corpus
+  the vocab is **30,481** (min_count=5) and the clean pass projected to **~8–10
+  hours**. An aborted background run also clobbered `data/processed/` (multiple
+  writers to one file) — see the lesson below.
+- **Constraint:** local i7-8565U CPU, 16 GB RAM; pure-Python text matching.
+- **Cause:** `match_canonical` seeded candidates from the **union of vocab entries
+  sharing ANY token** with the line. At 30k vocab, common words ("cheese",
+  "sauce") each map to ~hundreds of entries, almost none real matches — candidate
+  lists exploded and the per-line check went superlinear. The token index that
+  gave ~40× at 2k vocab degraded badly at 30k.
+- **Resolution:** **rarest-token bucketing** — register each vocab entry under
+  only its *rarest* word (min document frequency). A full match's rarest word is
+  always present in the line, so it is still reached; common-word buckets shrink
+  from hundreds to a handful. Provably output-identical to the full scan (locked
+  by a test), plus a deterministic tie-break so the indexed and full-scan paths
+  agree exactly. **Verified, not extrapolated:** 53k–72k recipes/min on the real
+  30k vocab → full clean in **~31–42 min** (measured 27.5 min clean + 7.5 min
+  vocab pass). Lesson recorded: never quote a scaled-up runtime from small-sample
+  extrapolation, and never run a long job as an unsupervised background writer.
+
+### Flagship graph advantage reversed at full-corpus scale — then recovered   (2026-06-01, Phase 2)
+- **Problem:** retraining substitution on the full 1.27M-recipe corpus (vocab
+  30,481) **reversed the headline result**: graph-only fell *below* the food2vec
+  baseline (MRR 0.151 vs 0.169; recall@10 0.264 vs 0.315), where on the 28k
+  sample it had won (0.339 vs 0.290). Both arms dropped; the graph dropped ~2×
+  harder.
+- **Constraint:** 16 GB RAM; the 30k×30k SPPMI graph is rebuilt at eval time.
+- **Attempts (systematic, hypothesis-driven — root cause before any fix):**
+  - *Dimensionality?* Swapped raw sparse SPPMI-cosine for dense SPPMI+SVD-100 on
+    the same matrix → **worse** (MRR 0.084; gold buried at median rank 752).
+    **Refuted.**
+  - *Frequency?* corr(log query-frequency, gold-rank) = **−0.61** for the graph —
+    the most frequency-sensitive arm.
+  - *Distractors?* Top-40 audit: gold substitutes are common (median df 7,586,
+    context-overlap 748); the non-gold candidates crowding the ranking are ~7×
+    rarer (df 1,016), half the overlap, **28% genuinely rare vs 0% of golds**.
+    Masking rare *non-gold* candidates (gold exempt) lifted graph-only back to
+    parity+ with emb. **Confirmed.**
+- **Cause:** the graph ranks by raw SPPMI cosine with **no support guard**. At 2k
+  common-only vocab there were no rare distractors; at 30k vocab the ~28k added
+  rare ingredients have sparse rows that yield *coincidentally* high cosine and
+  displace the well-supported common substitutes. word2vec's dense, downsampled
+  training is robust to this. The 28k-sample "graph beats baseline" headline was
+  real but **conditional on a small, common-only vocab**.
+- **Resolution:** **overlap-shrinkage** — weight the cosine by `ov/(ov+β)` where
+  `ov` = shared nonzero SPPMI context columns and β=100 (empirical-Bayes
+  confidence; chosen by a formulation grid over overlap/df floors & shrinkage).
+  Downweights low-overlap, low-confidence candidates. At full corpus this
+  **restores the flagship**: graph-only MRR 0.176 > emb 0.169, recall@10 0.316 >
+  0.315; hybrid best (0.201 / 0.352). *Caveats:* β tuned on the same 82-pair gold
+  (small n → mild overfit risk); absolute recall stays below the 28k sample
+  because 30k-vocab ranking is a harder task (not apples-to-apples). The claim is
+  narrow — the support guard restores the graph's **relative** advantage at scale.
 
 ### Retrieval leave-one-out eval is O(N²)   (2026-05-31, Phase 1)
 - **Problem:** Retrieval recall@10 over the 50k sample took 75 min.

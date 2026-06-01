@@ -62,6 +62,29 @@ coverage scoring. This is the number Phase 3's learned ranker must beat._
 ★ **Flagship beats baseline:** graph-only MRR 0.339 vs food2vec 0.290 (+17%);
 recall@10 0.475 vs 0.405. Hybrid gives best recall@10 (0.503) but lower MRR/P@1.
 
+#### Ablation — full corpus (1,274,290 recipes, vocab 30,481, n=82)
+
+> **Provenance:** full RecipeNLG 2.23M cleaned (1.27M after title-dedup),
+> `min_count=5` → vocab 30,481, seed=42. **Same** mined gold (116 pairs / 82
+> query keys) as the 28k row, so the arms are comparable **to each other**.
+> Absolute numbers are **not** comparable to the 28k row: the candidate space is
+> ~15× larger (a strictly harder ranking task), so all arms score lower.
+
+| Arm | MRR | R@5 | R@10 | Run |
+| --- | --- | --- | ---- | --- |
+| emb-only (food2vec baseline) | 0.169 | 0.201 | 0.315 | full, 2026-06-01 |
+| graph-only, **no** support guard | 0.151 | 0.151 | 0.264 | full, 2026-06-01 |
+| **graph-only + overlap-shrink (β=100) ★** | **0.176** | 0.225 | **0.316** | full, 2026-06-01 |
+| **hybrid (alpha=0.5) + shrink** | **0.201** | **0.281** | **0.352** | full, 2026-06-01 |
+
+★ **The flagship's lead reverses at full scale without a support guard**
+(graph 0.151 < emb 0.169) and is **restored** by overlap-shrinkage
+(0.176 > 0.169; hybrid best at 0.201 / 0.352). Root-cause investigation and the
+fix are documented in [CHALLENGES.md](CHALLENGES.md) — "Flagship graph advantage
+reversed at full-corpus scale". **Caveats:** β=100 was tuned on this same 82-pair
+gold (small n → mild overfit risk); the win is a **relative** one (graph > emb at
+the same scale), not an absolute gain over the 28k sample.
+
 #### Dietary guardrail
 
 | Tag | Substitutes tested | Valid % | Run |
