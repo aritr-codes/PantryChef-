@@ -38,6 +38,7 @@ def extract_features(
     `dietary_ok` is a placeholder 1.0 here (no diet constraint passed in the
     recovery task); it is wired to DietTagger at the call site when a diet is
     supplied. Kept in the vector so the column exists for later phases.
+    sub_lookup scores are treated as non-negative (clamped at 0).
     """
     canon = set(recipe.canonical)
     recipe_len = len(canon)
@@ -53,7 +54,7 @@ def extract_features(
     if sub_lookup is not None and missing:
         for m in missing:
             subs = sub_lookup(m)
-            best = max((subs[p] for p in pantry if p in subs), default=0.0)
+            best = max(0.0, max((subs[p] for p in pantry if p in subs), default=0.0))
             per_missing_best.append(best)
             sub_max = max(sub_max, best)
     sub_mean = (sum(per_missing_best) / len(per_missing_best)) if per_missing_best else 0.0

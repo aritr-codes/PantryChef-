@@ -61,6 +61,12 @@ def test_to_matrix_column_order():
 
 def test_to_matrix_drops_sub_columns():
     cols = [n for n in FEATURE_NAMES if n not in SUB_FEATURES]
-    feats = [{n: 1.0 for n in FEATURE_NAMES}]  # noqa: C420
+    feats = [dict.fromkeys(FEATURE_NAMES, 1.0)]
     m = to_matrix(feats, cols)
     assert m.shape == (1, len(FEATURE_NAMES) - len(SUB_FEATURES))
+
+
+def test_empty_pantry_is_safe():
+    f = extract_features(set(), _recipe("r", ["flour", "egg"]), sub_lookup=None)
+    assert f["match_frac_pantry"] == 0.0
+    assert f["coverage"] == 0.0
