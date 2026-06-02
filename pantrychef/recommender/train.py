@@ -13,22 +13,29 @@ import numpy as np
 from pantrychef.common import get_logger
 from pantrychef.common.types import Recipe
 from pantrychef.recommender.config import RecConfig
-from pantrychef.recommender.features import FEATURE_NAMES, extract_features, to_matrix
+from pantrychef.recommender.features import FEATURE_NAMES, SubLookup, extract_features, to_matrix
 from pantrychef.recommender.query_sim import is_train, make_query
+from pantrychef.recommender.rank import Ranker
 from pantrychef.recommender.recommend import candidate_pool
+from pantrychef.retrieval.index import InvertedIndex
 
 log = get_logger(__name__)
 
 
 def build_dataset(
     recipes: list[Recipe],
-    index,
-    sub_lookup,
+    index: InvertedIndex,
+    sub_lookup: SubLookup,
     cfg: RecConfig,
     columns: tuple[str, ...] = FEATURE_NAMES,
     train_only: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, list[int], dict[str, int]]:
-    """Return (X, y, group_sizes, stats) over masked train-split queries."""
+    """Return (X, y, group_sizes, stats) over masked train-split queries.
+
+    When train_only is False, all recipes are used (no is_train filter) — used by
+    eval. stats reports n_queries_total, n_queries_kept, n_dropped_empty_pool,
+    n_dropped_no_gold (the last two feed the candidate-recall ceiling).
+    """
     rng = random.Random(cfg.seed)
     feats: list[dict[str, float]] = []
     labels: list[int] = []
@@ -47,7 +54,7 @@ def build_dataset(
             if not pool:
                 n_no_pool += 1
                 continue
-            ids = [r.recipe_id for r in pool]
+            ids = {r.recipe_id for r in pool}
             if q.gold_id not in ids:
                 n_no_gold += 1
                 continue
@@ -67,8 +74,10 @@ def build_dataset(
     return X, np.array(labels, dtype=int), groups, stats
 
 
-def train_ranker(model, recipes, index, sub_lookup, cfg, columns=FEATURE_NAMES):
+def train_ranker(model: Ranker, recipes, index, sub_lookup, cfg, columns=FEATURE_NAMES):
     """Build the dataset and fit `model` in place; returns (model, stats)."""
     X, y, groups, stats = build_dataset(recipes, index, sub_lookup, cfg, columns)
+    if not groups:
+        raise ValueError("build_dataset produced 0 training groups; check corpus/config")
     model.fit(X, y, groups)
     return model, stats
