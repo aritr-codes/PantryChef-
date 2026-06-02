@@ -27,10 +27,18 @@ def test_make_query_masks_fraction_and_sets_gold():
     assert not (set(q.pantry) & set(q.hidden))
 
 
-def test_make_query_min_one_hidden():
-    r = _recipe("r2", ["a", "b", "c", "d"])  # 0.3*4 = 1.2 -> round 1
-    q = make_query(r, RecConfig(mask_fraction=0.3, seed=2), random.Random(2))
+def test_make_query_floor_enforces_min_one_hidden():
+    # mask_fraction so tiny it rounds to 0 -> floor should give 1
+    r = _recipe("rX", ["a", "b", "c", "d"])
+    q = make_query(r, RecConfig(mask_fraction=0.01), random.Random(0))
     assert len(q.hidden) == 1
+
+
+def test_make_query_cap_enforces_min_one_kept():
+    # mask_fraction so large it would hide all -> cap should leave 1 kept
+    r = _recipe("rY", ["a", "b", "c", "d"])
+    q = make_query(r, RecConfig(mask_fraction=0.9), random.Random(0))
+    assert len(q.pantry) == 1  # round(3.6)=4 -> capped to 3 hidden
 
 
 def test_make_query_skips_short_recipe():

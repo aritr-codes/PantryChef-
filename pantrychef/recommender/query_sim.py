@@ -32,13 +32,16 @@ def make_query(recipe: Recipe, cfg: RecConfig, rng: random.Random) -> QuerySim |
     """Mask cfg.mask_fraction of a recipe's unique canonical ingredients.
 
     Returns None for recipes shorter than cfg.min_recipe_len. At least one
-    ingredient is always hidden and at least one always kept.
+    ingredient is always hidden and at least one always kept. The hidden count
+    is round(mask_fraction * n) (Python round-half-to-even), floored at 1 and
+    capped at n-1.
     """
     canon = sorted(set(recipe.canonical))  # dedupe + deterministic order
     if len(canon) < cfg.min_recipe_len:
         return None
     n_hidden = max(1, round(cfg.mask_fraction * len(canon)))
     n_hidden = min(n_hidden, len(canon) - 1)  # always keep >=1
+    assert n_hidden >= 1, "n_hidden must stay >=1; check min_recipe_len"
     hidden = sorted(rng.sample(canon, n_hidden))
     pantry = sorted(set(canon) - set(hidden))
     return QuerySim(pantry=tuple(pantry), hidden=tuple(hidden), gold_id=recipe.recipe_id)
