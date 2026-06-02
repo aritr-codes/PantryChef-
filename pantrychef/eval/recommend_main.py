@@ -12,11 +12,13 @@ import argparse
 import numpy as np
 
 from pantrychef.common import get_logger
+from pantrychef.common.types import Recipe
 from pantrychef.eval.recommend_eval import evaluate
 from pantrychef.recommender.config import RecConfig
 from pantrychef.recommender.features import FEATURE_NAMES, SUB_FEATURES
 from pantrychef.recommender.rank import LambdaMARTRanker, LinearRanker
 from pantrychef.recommender.train import train_ranker
+from pantrychef.retrieval.index import InvertedIndex
 
 log = get_logger(__name__)
 
@@ -33,8 +35,35 @@ class OverlapModel:
         return -np.arange(len(X), dtype=float)
 
 
-def run_leaderboard(recipes, index, sub_lookup, cfg: RecConfig, use_lambdamart: bool = True):
-    """Train + evaluate each model; return a list of metric rows."""
+def run_leaderboard(
+    recipes: list[Recipe],
+    index: InvertedIndex,
+    sub_lookup,
+    cfg: RecConfig,
+    use_lambdamart: bool = True,
+) -> list[dict]:
+    """Train + evaluate each model; return a list of metric rows.
+
+    Parameters
+    ----------
+    recipes:
+        Corpus of recipes.  Must be a reusable sequence (list), not a
+        one-shot iterator — it is traversed once per arm.
+    index:
+        Pre-built inverted index over *recipes*.
+    sub_lookup:
+        Phase-2 substitutor callable, or ``None`` to disable sub_fill features.
+    cfg:
+        Recommender configuration (mask fraction, seed, …).
+    use_lambdamart:
+        When ``True`` (default) train and evaluate the LambdaMART arm and its
+        nosub ablation; set ``False`` for a fast dev/smoke run.
+
+    Returns
+    -------
+    List of metric dicts, one per arm, each containing ``model`` plus all keys
+    returned by :func:`evaluate`.
+    """
     rows = []
 
     overlap = OverlapModel()
@@ -57,6 +86,20 @@ def run_leaderboard(recipes, index, sub_lookup, cfg: RecConfig, use_lambdamart: 
             }
         )
     return rows
+
+
+def _format_table(rows: list[dict]) -> str:
+    """Aligned text table of leaderboard rows (model + recall@10/mrr@10/ceiling)."""
+    cols = ["model", "recall@10", "mrr@10", "ceiling", "recall@10|in_pool", "n_queries"]
+    header = "  ".join(c.ljust(18) for c in cols)
+    lines = [header]
+    for r in rows:
+        cells = []
+        for c in cols:
+            v = r.get(c, "")
+            cells.append((f"{v:.4f}" if isinstance(v, float) else str(v)).ljust(18))
+        lines.append("  ".join(cells))
+    return "\n".join(lines)
 
 
 def _build_substitutor():
@@ -101,30 +144,43 @@ def _build_substitutor():
     return lookup, recipes, vocab
 
 
-def main(argv: list[str] | None = None) -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse CLI args for the reranker leaderboard."""
     ap = argparse.ArgumentParser(description="Phase 3 reranker leaderboard.")
     ap.add_argument("--max-rows", type=int, default=None, help="cap corpus size for fast dev")
     ap.add_argument("--mask-fraction", type=float, default=0.3)
     ap.add_argument("--seed", type=int, default=13)
     ap.add_argument("--no-subs", action="store_true", help="skip Phase-2 sub_fill features")
-    args = ap.parse_args(argv)
+    return ap.parse_args(argv)
 
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entrypoint: load artifacts (or fall back), run the leaderboard, log + print rows."""
     from pantrychef.config import get_settings
     from pantrychef.data.store import load_recipes
     from pantrychef.retrieval.index import InvertedIndex
+
+    args = parse_args(argv)
 
     s = get_settings()
     sub_lookup, recipes, _ = (None, None, None) if args.no_subs else _build_substitutor()
     if recipes is None:
         recipes = load_recipes(s.processed_dir / "recipes.jsonl")
-    if args.max_rows:
+    if args.max_rows is not None:
         recipes = recipes[: args.max_rows]
+
+    if sub_lookup is None and not args.no_subs:
+        log.warning(
+            "Substitution artifacts absent; sub_fill features will be 0 and "
+            "lambdamart vs lambdamart-nosub will be identical. Pass --no-subs to silence."
+        )
 
     index = InvertedIndex.build(recipes)
     cfg = RecConfig(mask_fraction=args.mask_fraction, seed=args.seed)
     rows = run_leaderboard(recipes, index, sub_lookup, cfg)
     for r in rows:
         log.info("%s", {k: (round(v, 4) if isinstance(v, float) else v) for k, v in r.items()})
+    print(_format_table(rows))
     return 0
 
 

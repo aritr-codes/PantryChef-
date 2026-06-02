@@ -29,3 +29,20 @@ def test_run_leaderboard_smoke():
     assert "overlap" in names and "linear" in names
     for r in rows:
         assert "recall@10" in r and "mrr@10" in r
+
+
+def test_run_leaderboard_lambdamart_smoke():
+    corpus = [
+        Recipe(
+            recipe_id=str(i),
+            title=str(i),
+            canonical=["egg", "flour", "milk", "sugar", "butter", "salt", "oil"][: 4 + (i % 4)],
+        )
+        for i in range(80)
+    ]
+    idx = InvertedIndex.build(corpus)
+    rows = run_leaderboard(corpus, idx, sub_lookup=None, cfg=RecConfig(seed=3), use_lambdamart=True)
+    names = {r["model"] for r in rows}
+    assert names == {"overlap", "linear", "lambdamart", "lambdamart-nosub"}
+    for r in rows:
+        assert "recall@10" in r and "mrr@10" in r
