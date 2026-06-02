@@ -37,29 +37,24 @@ def mrr_at_k(ranked_ids: list[str], gold_id: str, k: int) -> float:
     return 0.0
 
 
-def evaluate(
-    model: _Scorer,
+EvalQuery = tuple[set[str], str, list[Recipe], bool]  # (pantry, gold_id, pool, in_pool)
+
+
+def build_eval_queries(
     recipes: Iterable[Recipe],
     index: InvertedIndex,
-    sub_lookup: SubLookup,
     cfg: RecConfig,
-    k: int = 10,
-    columns: tuple[str, ...] = FEATURE_NAMES,
     test_only: bool = True,
-) -> dict[str, float]:
-    """Evaluate the recovery task over test-split masked queries.
+) -> list[EvalQuery]:
+    """Precompute (pantry, gold_id, pool, in_pool) per eval query, once.
 
-    Returns overall recall@k / mrr@k, the candidate-recall ceiling (fraction of
-    queries where gold is in the pool at all), and recall|in_pool / mrr|in_pool
-    conditioned on that subset.
+    The candidate pool depends only on the pantry and index — not the model —
+    so building it here lets every leaderboard arm be scored against the SAME
+    prebuilt pools, paying the expensive candidate-pool pass a single time.
     """
     rng = random.Random(cfg.seed + 1)  # distinct from the train mask stream
-    n = n_in_pool = 0
-    recall = mrr = recall_ip = mrr_ip = 0.0
-
-    def feat_fn(p, r):
-        return extract_features(p, r, sub_lookup)
-
+    out: list[EvalQuery] = []
+    n = 0
     cap = cfg.max_eval_queries
     for recipe in recipes:
         if cap is not None and n >= cap:
@@ -73,12 +68,31 @@ def evaluate(
         pantry = set(q.pantry)
         pool = candidate_pool(index, pantry, cfg.candidate_cap)
         in_pool = q.gold_id in {r.recipe_id for r in pool}
-        ranked = rerank(
-            index, pantry, model, feat_fn, k=k, cap=cfg.candidate_cap, columns=columns, pool=pool
-        )
+        out.append((pantry, q.gold_id, pool, in_pool))
+    return out
+
+
+def score_queries(
+    model: _Scorer,
+    queries: list[EvalQuery],
+    index: InvertedIndex,
+    sub_lookup: SubLookup,
+    k: int = 10,
+    columns: tuple[str, ...] = FEATURE_NAMES,
+) -> dict[str, float]:
+    """Score prebuilt eval queries with a model; same metric dict as evaluate()."""
+    n = len(queries)
+    n_in_pool = 0
+    recall = mrr = recall_ip = mrr_ip = 0.0
+
+    def feat_fn(p, r):
+        return extract_features(p, r, sub_lookup)
+
+    for pantry, gold_id, pool, in_pool in queries:
+        ranked = rerank(index, pantry, model, feat_fn, k=k, columns=columns, pool=pool)
         ids = [r.recipe_id for r in ranked]
-        r_at = recall_at_k(ids, q.gold_id, k)
-        m_at = mrr_at_k(ids, q.gold_id, k)
+        r_at = recall_at_k(ids, gold_id, k)
+        m_at = mrr_at_k(ids, gold_id, k)
         recall += r_at
         mrr += m_at
         if in_pool:
@@ -95,5 +109,29 @@ def evaluate(
         "n_queries": float(n),
         "n_in_pool": float(n_in_pool),
     }
-    log.info("evaluate: %s", {key: round(v, 4) for key, v in out.items()})
+    log.info("score_queries: %s", {key: round(v, 4) for key, v in out.items()})
     return out
+
+
+def evaluate(
+    model: _Scorer,
+    recipes: Iterable[Recipe],
+    index: InvertedIndex,
+    sub_lookup: SubLookup,
+    cfg: RecConfig,
+    k: int = 10,
+    columns: tuple[str, ...] = FEATURE_NAMES,
+    test_only: bool = True,
+) -> dict[str, float]:
+    """Evaluate the recovery task over test-split masked queries.
+
+    Convenience composition of build_eval_queries + score_queries for a single
+    model. The leaderboard builds the queries once and calls score_queries per
+    arm instead, to avoid rebuilding identical pools.
+
+    Returns overall recall@k / mrr@k, the candidate-recall ceiling (fraction of
+    queries where gold is in the pool at all), and recall|in_pool / mrr|in_pool
+    conditioned on that subset.
+    """
+    queries = build_eval_queries(recipes, index, cfg, test_only)
+    return score_queries(model, queries, index, sub_lookup, k, columns)

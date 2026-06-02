@@ -13,11 +13,11 @@ import numpy as np
 
 from pantrychef.common import get_logger
 from pantrychef.common.types import Recipe
-from pantrychef.eval.recommend_eval import evaluate
+from pantrychef.eval.recommend_eval import build_eval_queries, score_queries
 from pantrychef.recommender.config import RecConfig
-from pantrychef.recommender.features import FEATURE_NAMES, SUB_FEATURES
+from pantrychef.recommender.features import FEATURE_NAMES, SUB_FEATURES, to_matrix
 from pantrychef.recommender.rank import LambdaMARTRanker, LinearRanker
-from pantrychef.recommender.train import train_ranker
+from pantrychef.recommender.train import build_examples
 from pantrychef.retrieval.index import InvertedIndex
 
 log = get_logger(__name__)
@@ -62,28 +62,39 @@ def run_leaderboard(
     Returns
     -------
     List of metric dicts, one per arm, each containing ``model`` plus all keys
-    returned by :func:`evaluate`.
+    returned by :func:`score_queries`.
+
+    The expensive candidate-pool passes are paid once: train examples are built
+    a single time (and column-sliced per arm), and the eval pools are built once
+    and scored by every arm — instead of rebuilding identical pools per model.
     """
-    rows = []
+    feats, labels, groups, _ = build_examples(recipes, index, sub_lookup, cfg, train_only=True)
+    if not groups:
+        raise ValueError("build_examples produced 0 training groups; check corpus/config")
+    y = np.array(labels, dtype=int)
+    x_full = to_matrix(feats, FEATURE_NAMES)
+    eval_queries = build_eval_queries(recipes, index, cfg, test_only=True)
 
-    overlap = OverlapModel()
-    rows.append({"model": "overlap", **evaluate(overlap, recipes, index, sub_lookup, cfg, k=10)})
+    def row(name: str, model, columns: tuple[str, ...]) -> dict:
+        return {
+            "model": name,
+            **score_queries(model, eval_queries, index, sub_lookup, k=10, columns=columns),
+        }
 
-    linear, _ = train_ranker(LinearRanker(seed=cfg.seed), recipes, index, sub_lookup, cfg)
-    rows.append({"model": "linear", **evaluate(linear, recipes, index, sub_lookup, cfg, k=10)})
+    rows = [row("overlap", OverlapModel(), FEATURE_NAMES)]
+    rows.append(row("linear", LinearRanker(seed=cfg.seed).fit(x_full, y, groups), FEATURE_NAMES))
 
     if use_lambdamart:
-        lm, _ = train_ranker(LambdaMARTRanker(seed=cfg.seed), recipes, index, sub_lookup, cfg)
-        rows.append({"model": "lambdamart", **evaluate(lm, recipes, index, sub_lookup, cfg, k=10)})
-
-        lm_ns, _ = train_ranker(
-            LambdaMARTRanker(seed=cfg.seed), recipes, index, sub_lookup, cfg, columns=NO_SUB_COLUMNS
-        )
         rows.append(
-            {
-                "model": "lambdamart-nosub",
-                **evaluate(lm_ns, recipes, index, sub_lookup, cfg, k=10, columns=NO_SUB_COLUMNS),
-            }
+            row("lambdamart", LambdaMARTRanker(seed=cfg.seed).fit(x_full, y, groups), FEATURE_NAMES)
+        )
+        x_nosub = to_matrix(feats, NO_SUB_COLUMNS)
+        rows.append(
+            row(
+                "lambdamart-nosub",
+                LambdaMARTRanker(seed=cfg.seed).fit(x_nosub, y, groups),
+                NO_SUB_COLUMNS,
+            )
         )
     return rows
 
