@@ -8,12 +8,21 @@ model rank this SAME pool, so the comparison isolates the ordering function.
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Protocol
+
+import numpy as np
 
 from pantrychef.common.types import Recipe, ScoredRecipe
 from pantrychef.recommender.features import FEATURE_NAMES, to_matrix
 from pantrychef.retrieval.index import InvertedIndex
 
-FeatureFn = Callable[[set, Recipe], dict]
+FeatureFn = Callable[[set[str], Recipe], dict[str, float]]
+
+
+class _Scorer(Protocol):
+    """Anything with a score(X) -> ndarray method (LinearRanker, LambdaMARTRanker, OverlapModel)."""
+
+    def score(self, X: np.ndarray) -> np.ndarray: ...
 
 
 def candidate_pool(index: InvertedIndex, pantry: set[str], cap: int) -> list[Recipe]:
@@ -27,6 +36,8 @@ def candidate_pool(index: InvertedIndex, pantry: set[str], cap: int) -> list[Rec
         matched = len(pantry & canon)
         coverage = matched / len(canon)
         scored.append((coverage, len(canon - pantry), rid, recipe))
+    # Sort key mirrors baseline.recommend (coverage desc, fewer missing, id) — intentional:
+    # the pool MUST be the P1 baseline order so reranker-vs-baseline stays apples-to-apples.
     scored.sort(key=lambda t: (-t[0], t[1], t[2]))
     return [t[3] for t in scored[:cap]]
 
@@ -34,13 +45,15 @@ def candidate_pool(index: InvertedIndex, pantry: set[str], cap: int) -> list[Rec
 def rerank(
     index: InvertedIndex,
     pantry: set[str],
-    model,
+    model: _Scorer,
     feature_fn: FeatureFn,
     k: int = 10,
     cap: int = 200,
     columns: tuple[str, ...] = FEATURE_NAMES,
 ) -> list[ScoredRecipe]:
     """Rerank the shared candidate pool by model score (tie-break recipe_id)."""
+    if k <= 0 or cap <= 0:
+        return []
     pool = candidate_pool(index, pantry, cap)
     if not pool:
         return []
