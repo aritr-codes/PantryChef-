@@ -50,11 +50,12 @@ def rerank(
     k: int = 10,
     cap: int = 200,
     columns: tuple[str, ...] = FEATURE_NAMES,
+    pool: list[Recipe] | None = None,
 ) -> list[ScoredRecipe]:
     """Rerank the shared candidate pool by model score (tie-break recipe_id)."""
     if k <= 0 or cap <= 0:
         return []
-    pool = candidate_pool(index, pantry, cap)
+    pool = pool if pool is not None else candidate_pool(index, pantry, cap)
     if not pool:
         return []
     feats = [feature_fn(pantry, r) for r in pool]

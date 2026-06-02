@@ -9,21 +9,28 @@ evidence.
 from __future__ import annotations
 
 import random
+from collections.abc import Iterable
 
 from pantrychef.common import get_logger
+from pantrychef.common.types import Recipe
 from pantrychef.recommender.config import RecConfig
-from pantrychef.recommender.features import FEATURE_NAMES, extract_features
+from pantrychef.recommender.features import FEATURE_NAMES, SubLookup, extract_features
 from pantrychef.recommender.query_sim import is_train, make_query
-from pantrychef.recommender.recommend import candidate_pool, rerank
+from pantrychef.recommender.recommend import _Scorer, candidate_pool, rerank
+from pantrychef.retrieval.index import InvertedIndex
 
 log = get_logger(__name__)
 
 
 def recall_at_k(ranked_ids: list[str], gold_id: str, k: int) -> float:
+    if k <= 0:
+        return 0.0
     return 1.0 if gold_id in ranked_ids[:k] else 0.0
 
 
 def mrr_at_k(ranked_ids: list[str], gold_id: str, k: int) -> float:
+    if k <= 0:
+        return 0.0
     for rank, rid in enumerate(ranked_ids[:k], 1):
         if rid == gold_id:
             return 1.0 / rank
@@ -31,10 +38,10 @@ def mrr_at_k(ranked_ids: list[str], gold_id: str, k: int) -> float:
 
 
 def evaluate(
-    model,
-    recipes,
-    index,
-    sub_lookup,
+    model: _Scorer,
+    recipes: Iterable[Recipe],
+    index: InvertedIndex,
+    sub_lookup: SubLookup,
     cfg: RecConfig,
     k: int = 10,
     columns: tuple[str, ...] = FEATURE_NAMES,
@@ -61,9 +68,11 @@ def evaluate(
             continue
         n += 1
         pantry = set(q.pantry)
-        pool_ids = [r.recipe_id for r in candidate_pool(index, pantry, cfg.candidate_cap)]
-        in_pool = q.gold_id in pool_ids
-        ranked = rerank(index, pantry, model, feat_fn, k=k, cap=cfg.candidate_cap, columns=columns)
+        pool = candidate_pool(index, pantry, cfg.candidate_cap)
+        in_pool = q.gold_id in {r.recipe_id for r in pool}
+        ranked = rerank(
+            index, pantry, model, feat_fn, k=k, cap=cfg.candidate_cap, columns=columns, pool=pool
+        )
         ids = [r.recipe_id for r in ranked]
         r_at = recall_at_k(ids, q.gold_id, k)
         m_at = mrr_at_k(ids, q.gold_id, k)
