@@ -7,6 +7,7 @@ from pantrychef.recommender.rank import LambdaMARTRanker  # noqa: E402
 
 
 def test_lambdamart_ranks_signal_above_noise():
+    # train == test; smoke test that the ranker fits + learns the signal
     rng = np.random.default_rng(0)
     X_rows, y_rows, groups = [], [], []
     for _ in range(20):
@@ -22,8 +23,15 @@ def test_lambdamart_ranks_signal_above_noise():
     y = np.concatenate(y_rows)
     m = LambdaMARTRanker(seed=0).fit(X, y, groups=groups)
     scores = m.score(X)
-    first = scores[:5]
-    assert int(np.argmax(first)) == int(np.argmax(y[:5]))
+    group_size, n_groups = 5, 20
+    mrr = 0.0
+    for i in range(n_groups):
+        s = scores[i * group_size : (i + 1) * group_size]
+        gold_idx = int(np.argmax(y[i * group_size : (i + 1) * group_size]))
+        rank = np.argsort(-s).tolist().index(gold_idx) + 1
+        mrr += 1.0 / rank
+    mrr /= n_groups
+    assert mrr >= 0.8  # +5 sigma signal; well-trained LambdaMART approaches 1.0
 
 
 def test_lambdamart_unfitted_raises():

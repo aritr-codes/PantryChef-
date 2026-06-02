@@ -62,25 +62,40 @@ class LinearRanker:
 class LambdaMARTRanker:
     """LightGBM LambdaMART (objective='lambdarank'). Lazy import keeps core clean."""
 
-    def __init__(self, num_leaves: int = 31, n_estimators: int = 200, seed: int = 13) -> None:
+    def __init__(
+        self,
+        num_leaves: int = 31,
+        n_estimators: int = 200,
+        min_child_samples: int = 5,
+        seed: int = 13,
+    ) -> None:
         self.num_leaves = num_leaves
         self.n_estimators = n_estimators
+        self.min_child_samples = min_child_samples
         self.seed = seed
         self._model = None
 
     def fit(self, X: np.ndarray, y: np.ndarray, groups: list[int]) -> LambdaMARTRanker:
+        """Fit the LambdaMART ranker.
+
+        Labels y are cast to int (relevance grades); this task uses {0, 1}.
+        """
+        if sum(groups) != len(X):
+            raise ValueError(f"sum(groups)={sum(groups)} must equal len(X)={len(X)}")
         try:
             import lightgbm as lgb
+            from sklearn.base import BaseEstimator as _unused  # noqa: F401
         except ImportError as e:  # pragma: no cover
             raise RuntimeError(
-                "LambdaMARTRanker needs the [recommend] extra: uv sync --extra recommend"
+                "LambdaMARTRanker needs the [recommend] extra "
+                "(lightgbm + scikit-learn): uv sync --extra recommend"
             ) from e
         self._model = lgb.LGBMRanker(
             objective="lambdarank",
             num_leaves=self.num_leaves,
             n_estimators=self.n_estimators,
             random_state=self.seed,
-            min_child_samples=5,
+            min_child_samples=self.min_child_samples,
             verbose=-1,
         )
         self._model.fit(X, y.astype(int), group=groups)
