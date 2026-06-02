@@ -102,13 +102,17 @@ def _format_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _build_substitutor():
-    """Load Phase-2 artifacts.
+def _build_substitutor(recipes: list[Recipe], sub_pool: int = 20):
+    """Build the Phase-2 substitutor over *recipes* and return a memoized lookup.
 
-    Returns (sub_lookup, recipes, vocab) or (None, None, None) if absent.
+    The co-occurrence graph is built on the SAME recipe slice passed in, so a
+    capped run (``--max-rows N``) computes sub_fill features over that N-recipe
+    universe rather than reloading the full corpus. The word2vec embedding arm
+    is the shipped, full-corpus artifact loaded from disk. Returns ``None`` when
+    the embedding model is absent. The lookup is memoized per ingredient —
+    substitutes() is deterministic and many queries share missing ingredients.
     """
     from pantrychef.config import get_settings
-    from pantrychef.data.store import load_recipes
     from pantrychef.ingredients.vocab import load_vocabulary
     from pantrychef.substitution.config import SubConfig
     from pantrychef.substitution.cooccur import build_cooccurrence, sppmi
@@ -120,8 +124,7 @@ def _build_substitutor():
     s = get_settings()
     model = s.models_dir / "substitution" / "word2vec.kv"
     if not model.exists():
-        return None, None, None
-    recipes = load_recipes(s.processed_dir / "recipes.jsonl")
+        return None
     vocab = load_vocabulary(s.processed_dir / "vocab.json")
     cmat, _, _, _ = build_cooccurrence(recipes, vocab)
     cfg = SubConfig()
@@ -138,10 +141,16 @@ def _build_substitutor():
         cfg=cfg,
     )
 
-    def lookup(missing: str) -> dict[str, float]:
-        return {s_.ingredient: s_.score for s_ in sub.substitutes(missing, k=20)}
+    cache: dict[str, dict[str, float]] = {}
 
-    return lookup, recipes, vocab
+    def lookup(missing: str) -> dict[str, float]:
+        hit = cache.get(missing)
+        if hit is None:
+            hit = {s_.ingredient: s_.score for s_ in sub.substitutes(missing, k=sub_pool)}
+            cache[missing] = hit
+        return hit
+
+    return lookup
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -151,6 +160,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--mask-fraction", type=float, default=0.3)
     ap.add_argument("--seed", type=int, default=13)
     ap.add_argument("--no-subs", action="store_true", help="skip Phase-2 sub_fill features")
+    ap.add_argument(
+        "--max-train-queries", type=int, default=None, help="cap attempted train queries"
+    )
+    ap.add_argument("--max-eval-queries", type=int, default=None, help="cap attempted eval queries")
     return ap.parse_args(argv)
 
 
@@ -158,17 +171,14 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint: load artifacts (or fall back), run the leaderboard, log + print rows."""
     from pantrychef.config import get_settings
     from pantrychef.data.store import load_recipes
-    from pantrychef.retrieval.index import InvertedIndex
 
     args = parse_args(argv)
 
     s = get_settings()
-    sub_lookup, recipes, _ = (None, None, None) if args.no_subs else _build_substitutor()
-    if recipes is None:
-        recipes = load_recipes(s.processed_dir / "recipes.jsonl")
-    if args.max_rows is not None:
-        recipes = recipes[: args.max_rows]
+    # Single capped load: P2 features, index, and eval all use the same slice.
+    recipes = load_recipes(s.processed_dir / "recipes.jsonl", limit=args.max_rows)
 
+    sub_lookup = None if args.no_subs else _build_substitutor(recipes)
     if sub_lookup is None and not args.no_subs:
         log.warning(
             "Substitution artifacts absent; sub_fill features will be 0 and "
@@ -176,7 +186,12 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     index = InvertedIndex.build(recipes)
-    cfg = RecConfig(mask_fraction=args.mask_fraction, seed=args.seed)
+    cfg = RecConfig(
+        mask_fraction=args.mask_fraction,
+        seed=args.seed,
+        max_train_queries=args.max_train_queries,
+        max_eval_queries=args.max_eval_queries,
+    )
     rows = run_leaderboard(recipes, index, sub_lookup, cfg)
     for r in rows:
         log.info("%s", {k: (round(v, 4) if isinstance(v, float) else v) for k, v in r.items()})

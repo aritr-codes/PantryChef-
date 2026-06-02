@@ -62,3 +62,19 @@ def test_evaluate_test_only_filter():
     test_split = evaluate(model, corpus, idx, None, cfg, k=10)
     all_recipes = evaluate(model, corpus, idx, None, cfg, k=10, test_only=False)
     assert all_recipes["n_queries"] >= test_split["n_queries"]
+
+
+def test_evaluate_respects_max_eval_queries():
+    corpus = [
+        Recipe(
+            recipe_id=str(i),
+            title=str(i),
+            canonical=["egg", "flour", "milk", "sugar", "butter", "salt"][: 4 + (i % 3)],
+        )
+        for i in range(60)
+    ]
+    idx = InvertedIndex.build(corpus)
+    cfg = RecConfig(seed=2, max_eval_queries=5)
+    model, _ = train_ranker(LinearRanker(seed=0), corpus, idx, None, cfg)
+    m = evaluate(model, corpus, idx, None, cfg, k=10)
+    assert m["n_queries"] <= 5

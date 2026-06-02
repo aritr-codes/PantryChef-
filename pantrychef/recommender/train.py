@@ -42,10 +42,15 @@ def build_dataset(
     groups: list[int] = []
     n_total = n_no_pool = n_no_gold = 0
 
+    cap = cfg.max_train_queries
     for recipe in recipes:
+        if cap is not None and n_total >= cap:
+            break
         if train_only and not is_train(recipe.recipe_id):
             continue
         for _ in range(cfg.queries_per_recipe):
+            if cap is not None and n_total >= cap:
+                break
             q = make_query(recipe, cfg, rng)
             if q is None:
                 continue

@@ -13,3 +13,5 @@ class RecConfig:
     seed: int = 13  # deterministic masking
     sub_pool: int = 20  # P2 substitutes fetched per missing ingredient for sub_fill
     queries_per_recipe: int = 1  # masked variants generated per train recipe
+    max_train_queries: int | None = None  # cap attempted train queries (None = all)
+    max_eval_queries: int | None = None  # cap attempted eval queries (None = all)

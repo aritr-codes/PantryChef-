@@ -11,10 +11,16 @@ class InvertedIndex:
     def __init__(self) -> None:
         self.postings: dict[str, set[str]] = {}
         self.recipes: dict[str, Recipe] = {}
+        # Canonical ingredient sets, precomputed once per recipe. The reranker
+        # scores a recipe across many queries; rebuilding set(recipe.canonical)
+        # each time dominates candidate-pool cost, so cache it here.
+        self.canon_sets: dict[str, frozenset[str]] = {}
 
     def add(self, recipe: Recipe) -> None:
         self.recipes[recipe.recipe_id] = recipe
-        for ing in recipe.canonical:
+        canon = frozenset(recipe.canonical)
+        self.canon_sets[recipe.recipe_id] = canon
+        for ing in canon:
             self.postings.setdefault(ing, set()).add(recipe.recipe_id)
 
     @classmethod

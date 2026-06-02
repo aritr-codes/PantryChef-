@@ -60,7 +60,10 @@ def evaluate(
     def feat_fn(p, r):
         return extract_features(p, r, sub_lookup)
 
+    cap = cfg.max_eval_queries
     for recipe in recipes:
+        if cap is not None and n >= cap:
+            break
         if test_only and is_train(recipe.recipe_id):
             continue
         q = make_query(recipe, cfg, rng)

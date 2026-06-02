@@ -26,16 +26,26 @@ class _Scorer(Protocol):
 
 
 def candidate_pool(index: InvertedIndex, pantry: set[str], cap: int) -> list[Recipe]:
-    """Overlap candidates ordered by coverage desc, then fewer-missing, then id."""
+    """Overlap candidates ordered by coverage desc, then fewer-missing, then id.
+
+    Scores with a single match-count pass over the postings lists instead of a
+    set intersection per candidate: each pantry ingredient adds +1 to every
+    recipe in its postings, so the accumulated count equals |pantry ∩ recipe|.
+    Coverage and missing-count then follow by arithmetic with the cached
+    canonical-set length — no per-candidate set operations. Exact-equivalent to
+    the set-based scoring; the hot path is integer increments.
+    """
+    counts: dict[str, int] = {}
+    for ing in pantry:
+        for rid in index.postings.get(ing, ()):
+            counts[rid] = counts.get(rid, 0) + 1
     scored: list[tuple[float, int, str, Recipe]] = []
-    for rid in index.candidates(pantry):
-        recipe = index.recipes[rid]
-        canon = set(recipe.canonical)
-        if not canon:
+    for rid, matched in counts.items():
+        canon_len = len(index.canon_sets[rid])
+        if not canon_len:
             continue
-        matched = len(pantry & canon)
-        coverage = matched / len(canon)
-        scored.append((coverage, len(canon - pantry), rid, recipe))
+        coverage = matched / canon_len
+        scored.append((coverage, canon_len - matched, rid, index.recipes[rid]))
     # Sort key mirrors baseline.recommend (coverage desc, fewer missing, id) — intentional:
     # the pool MUST be the P1 baseline order so reranker-vs-baseline stays apples-to-apples.
     scored.sort(key=lambda t: (-t[0], t[1], t[2]))
@@ -64,7 +74,7 @@ def rerank(
     out: list[ScoredRecipe] = []
     for i in order[:k]:
         r = pool[i]
-        canon = set(r.canonical)
+        canon = index.canon_sets[r.recipe_id]
         out.append(
             ScoredRecipe(
                 recipe_id=r.recipe_id,

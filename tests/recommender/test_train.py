@@ -54,3 +54,17 @@ def test_train_ranker_smoke():
     model, stats = train_ranker(LinearRanker(), corpus, idx, sub_lookup=None, cfg=RecConfig(seed=1))
     assert model.w_ is not None  # fitted
     assert stats["n_queries_kept"] > 0
+
+
+def test_build_dataset_respects_max_train_queries():
+    corpus = _corpus()
+    idx = InvertedIndex.build(corpus)
+    _, _, groups, stats = build_dataset(
+        corpus,
+        idx,
+        sub_lookup=None,
+        cfg=RecConfig(seed=1, max_train_queries=3),
+        columns=FEATURE_NAMES,
+    )
+    assert stats["n_queries_total"] <= 3
+    assert len(groups) <= 3
