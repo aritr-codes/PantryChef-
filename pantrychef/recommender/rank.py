@@ -35,6 +35,8 @@ class LinearRanker:
         return (X - self.mean_) / self.std_
 
     def fit(self, X: np.ndarray, y: np.ndarray, groups: list[int]) -> LinearRanker:
+        if X.ndim != 2 or y.ndim != 1 or len(y) != len(X):
+            raise ValueError(f"shape mismatch: X={X.shape}, y={y.shape}")
         self.mean_ = X.mean(axis=0)
         self.std_ = X.std(axis=0)
         self.std_[self.std_ == 0] = 1.0  # guard constant columns

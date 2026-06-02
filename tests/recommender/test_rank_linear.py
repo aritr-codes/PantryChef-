@@ -11,7 +11,7 @@ def test_linear_learns_separable_signal():
     y = np.array([1] * 100 + [0] * 100)
     m = LinearRanker(seed=0).fit(X, y, groups=[200])
     scores = m.score(X)
-    assert scores[:100].mean() > scores[100:].mean()
+    assert scores[:100].min() > scores[100:].max()
 
 
 def test_linear_scaler_is_train_only():
@@ -20,6 +20,14 @@ def test_linear_scaler_is_train_only():
     m = LinearRanker(seed=0).fit(X, y, groups=[3])
     assert m.mean_ is not None and m.std_ is not None
     assert np.allclose(m.mean_, X.mean(axis=0))
+    assert np.allclose(m.std_, X.std(axis=0))
+
+
+def test_score_raises_before_fit():
+    import pytest
+
+    with pytest.raises(RuntimeError, match="not fitted"):
+        LinearRanker().score(np.zeros((1, 2)))
 
 
 def test_score_length_matches_rows():
