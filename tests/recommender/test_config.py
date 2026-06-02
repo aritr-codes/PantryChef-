@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pantrychef.recommender.config import RecConfig
 
 
@@ -16,3 +18,14 @@ def test_override():
     assert c.mask_fraction == 0.5
     assert c.candidate_cap == 50
     assert c.min_recipe_len == 4  # unchanged
+
+
+def test_frozen() -> None:
+    import dataclasses
+
+    c = RecConfig()
+    try:
+        c.mask_fraction = 0.9  # type: ignore[misc]
+        raise AssertionError("should be frozen")
+    except dataclasses.FrozenInstanceError:
+        pass
