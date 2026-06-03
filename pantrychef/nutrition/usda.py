@@ -55,6 +55,23 @@ _UNIT_MAP: dict[str, str] = {
 }
 
 
+def _to_float(s: str | None) -> float | None:
+    """Parse a CSV cell to float, returning None for blank/whitespace/invalid cells.
+
+    Real FDC exports sometimes emit whitespace-only or empty strings; float(" ")
+    raises ValueError so we guard explicitly here.
+    """
+    if s is None:
+        return None
+    s = s.strip()
+    if not s:
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
 def _read_csv(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
@@ -70,20 +87,41 @@ def build_artifact(csv_dir: str | Path) -> dict[int, dict]:
         table[fdc] = {"description": r["description"], "per100g": {}, "unit_grams": {}}
 
     for r in _read_csv(d / "food_nutrient.csv"):
-        nid = int(float(r["nutrient_id"]))
-        fdc = int(r["fdc_id"])
-        if nid in WHITELIST and fdc in table and r["amount"]:
-            table[fdc]["per100g"][WHITELIST[nid]] = float(r["amount"])
+        # FDC nutrient_ids are integers but we parse defensively (some exports
+        # emit floats like "1008.0"); skip malformed rows entirely.
+        nid_f = _to_float(r.get("nutrient_id"))
+        if nid_f is None:
+            continue
+        nid = int(nid_f)
+        fdc_raw = _to_float(r.get("fdc_id"))
+        if fdc_raw is None:
+            continue
+        fdc = int(fdc_raw)
+        val = _to_float(r.get("amount"))
+        if nid not in WHITELIST or fdc not in table or val is None:
+            continue
+
+        key = WHITELIST[nid]
+        # Prefer nutrient 2000 (Total Sugars) over 1063 (Sugars, added) for
+        # sugar_g.  If 1063 arrives first it writes a placeholder; 2000 will
+        # overwrite it.  If 2000 arrived first, skip any later 1063 row so the
+        # authoritative value is never clobbered by row order.
+        if key == "sugar_g" and nid == 1063 and "sugar_g" in table[fdc]["per100g"]:
+            continue  # prefer nutrient 2000 (Total Sugars) over 1063
+        table[fdc]["per100g"][key] = val
 
     for r in _read_csv(d / "food_portion.csv"):
-        fdc = int(r["fdc_id"])
+        fdc_raw = _to_float(r.get("fdc_id"))
+        if fdc_raw is None:
+            continue
+        fdc = int(fdc_raw)
         if fdc not in table:
             continue
-        amount = float(r["amount"]) if r.get("amount") else 1.0
-        if amount <= 0:
+        amount = _to_float(r.get("amount")) or 1.0  # treat missing/blank as 1.0
+        gram_weight = _to_float(r.get("gram_weight"))
+        if gram_weight is None or gram_weight <= 0:
             continue
-        gram_weight = float(r["gram_weight"]) if r.get("gram_weight") else 0.0
-        if gram_weight <= 0:
+        if amount <= 0:
             continue
         name = units.get(int(r["measure_unit_id"]), "") if r.get("measure_unit_id") else ""
         symbol = _UNIT_MAP.get(name, "each")  # unmapped measure -> a countable "each"
