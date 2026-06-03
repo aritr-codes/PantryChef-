@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from pantrychef.common.types import Recipe
 from pantrychef.eval.recommend_main import OverlapModel, run_leaderboard
@@ -32,6 +33,7 @@ def test_run_leaderboard_smoke():
 
 
 def test_run_leaderboard_lambdamart_smoke():
+    pytest.importorskip("lightgbm")  # optional `recommend` extra; skip if absent
     corpus = [
         Recipe(
             recipe_id=str(i),
