@@ -23,7 +23,9 @@ jobs:
         # scipy/gensim/numpy/mlflow; recommend = lightgbm/scikit-learn), not
         # just dev. Without `recommend`, the lambdamart leaderboard smoke test
         # importorskips and the flagship reranker arm gets no CI coverage.
-        run: uv sync --extra dev --extra substitution --extra recommend
+        # Phase-4 adds `nutrition` (scikit-learn) so the gated macro-imputation
+        # test runs in CI instead of importorskip-skipping.
+        run: uv sync --extra dev --extra substitution --extra recommend --extra nutrition
 
       - name: Lint
         run: uv run ruff check .

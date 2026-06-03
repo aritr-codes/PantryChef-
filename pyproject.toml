@@ -29,6 +29,8 @@ substitution = [
 ]
 # Phase 3 reranker. Installed on demand to keep the base env light.
 recommend = ["lightgbm>=4.0", "scikit-learn>=1.4"]
+# Phase 4 gated macro imputation. Built only when the coverage gate trips.
+nutrition = ["scikit-learn>=1.4"]
 
 [project.scripts]
 pantrychef = "pantrychef.cli:main"
