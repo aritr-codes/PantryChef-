@@ -35,3 +35,23 @@ def test_unresolved_volume_no_density_no_portion():
 def test_missing_quantity_unresolved():
     g, ok = to_grams(None, None, "salt", NODATA)
     assert g is None and ok is False
+
+
+def test_pinch_resolves_with_no_quantity():
+    g, ok = to_grams(None, "pinch", "salt", NODATA)
+    assert ok and math.isclose(g, 0.36)
+
+
+def test_zero_quantity_pinch_is_zero():
+    g, ok = to_grams(0.0, "pinch", "salt", NODATA)
+    assert ok and g == 0.0
+
+
+def test_package_unit_unresolved():
+    g, ok = to_grams(1.0, "package", "butter", NODATA)
+    assert g is None and ok is False
+
+
+def test_count_unit_uses_curated_portion():
+    g, ok = to_grams(2.0, "clove", "garlic clove", NODATA)  # _PORTION_G["clove"]=3.0
+    assert ok and g == 6.0

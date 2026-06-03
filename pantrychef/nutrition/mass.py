@@ -3,7 +3,18 @@
 Mass units convert by fixed factor. Volume units use the food's USDA portion
 gram-weight when present, else a per-ingredient-class density fallback. Count /
 portion units use the food's "each" portion or a curated per-item table.
-Anything unresolved returns (None, False) and is reported as a coverage gap."""
+Anything unresolved returns (None, False) and is reported as a coverage gap.
+
+Preconditions
+-------------
+* ``unit`` must already be a lowercase canonical symbol as produced by Phase-1
+  ``units.py``.  Unrecognized unit strings resolve to ``(None, False)``.
+* Density / portion lookup is first-matching-token-wins: ``_keyword`` splits the
+  canonical ingredient name on whitespace and returns the first token found in
+  the lookup table.  A compound canonical such as "rice vinegar" will therefore
+  match "rice" (density 0.85) rather than "vinegar" (density 1.01).  This is an
+  accepted coarse approximation; precise compound-ingredient densities are out of
+  scope for this module."""
 
 from __future__ import annotations
 
@@ -66,7 +77,8 @@ def to_grams(
 ) -> tuple[float | None, bool]:
     unit_grams = food.get("unit_grams", {})
     if unit in TINY_G:
-        return (qty or 1.0) * TINY_G[unit], True
+        amount = 1.0 if qty is None else qty
+        return amount * TINY_G[unit], True
     if qty is None:
         return None, False
     if unit in MASS_TO_G:
