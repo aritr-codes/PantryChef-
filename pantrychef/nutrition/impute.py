@@ -19,10 +19,17 @@ class MacroImputer:
         self._vec = HashingVectorizer(n_features=n_features, alternate_sign=False)
         self._model = Ridge(alpha=1.0, random_state=seed)
         self.mae_ = 0.0
+        self._fitted = False
 
     def fit(self, samples: list[tuple[str, dict]], target: str) -> MacroImputer:
         names = [n for n, macros in samples if target in macros]
         y = np.array([macros[target] for _, macros in samples if target in macros], dtype=float)
+        if not names:
+            # No training signal for this target (e.g. a micro absent from every
+            # matched food). No-op: stay unfitted so predict returns 0.0 instead
+            # of crashing on an empty design matrix.
+            self.mae_ = 0.0
+            return self
         x = self._vec.transform(names)
         if len(y) >= 4:
             x_tr, x_te, y_tr, y_te = train_test_split(x, y, test_size=0.25, random_state=self.seed)
@@ -32,7 +39,10 @@ class MacroImputer:
         else:
             self._model.fit(x, y)
             self.mae_ = 0.0
+        self._fitted = True
         return self
 
     def predict(self, ingredient: str) -> float:
+        if not self._fitted:
+            return 0.0
         return float(self._model.predict(self._vec.transform([ingredient]))[0])

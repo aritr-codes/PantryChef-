@@ -51,14 +51,17 @@ def main(argv: list[str] | None = None) -> int:
     labels = json.loads((s.repo_root / "data/nutrition/dietary_labels.json").read_text("utf-8"))
     acc = dietary_accuracy(DietTagger(known=vocab), labels)
 
+    # Diagnostic only: signals whether the macro imputer is worth building. The
+    # imputer (pantrychef/nutrition/impute.py) is a standalone gated component;
+    # its predictions are NOT wired into the coverage/macros reported above.
     gate = (
         rep["match_coverage"] < cfg.impute_match_cov_gate
         or rep["median_unresolved_mass"] > cfg.impute_unresolved_mass_gate
     )
     log.info("coverage: %s", rep)
     log.info("dietary_accuracy: %s", acc)
-    log.info("imputation_gate_tripped: %s", gate)
-    print(json.dumps({"coverage": rep, "dietary": acc, "impute_gate": gate}, indent=2))
+    log.info("imputation_gate_tripped (advisory): %s", gate)
+    print(json.dumps({"coverage": rep, "dietary": acc, "impute_gate_advisory": gate}, indent=2))
     return 0
 
 
