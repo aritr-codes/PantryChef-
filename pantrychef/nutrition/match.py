@@ -26,7 +26,7 @@ class IngredientMatcher:
         aliases: dict[str, int] | None = None,
         jaccard_threshold: float = 0.34,
     ) -> None:
-        self.table = table
+        self.table = table  # retained for callers (aggregate.py looks up matcher.table[fdc_id])
         self.threshold = jaccard_threshold
         self._aliases = {canonicalize(k): v for k, v in (aliases or {}).items()}
         self._exact: dict[str, int] = {}

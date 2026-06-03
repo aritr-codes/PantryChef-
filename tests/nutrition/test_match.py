@@ -29,3 +29,23 @@ def test_unmatched_returns_none():
     m = IngredientMatcher(TABLE, jaccard_threshold=0.9)
     res = m.match("xyzzy")
     assert res.fdc_id is None and res.method == "none"
+
+
+def test_alias_overrides_exact_to_different_fdc():
+    # alias points "butter" at 200 even though 100 is its exact description match
+    m = IngredientMatcher(TABLE, aliases={"butter": 200})
+    res = m.match("butter")
+    assert res.fdc_id == 200 and res.method == "alias"
+
+
+def test_jaccard_tiebreak_picks_smallest_fdc():
+    # two foods with identical descriptions => equal Jaccard => smaller fdc_id wins,
+    # regardless of dict insertion order
+    table = {
+        900: {"description": "Pepper, green, raw", "per100g": {}, "unit_grams": {}},
+        400: {"description": "Pepper, green, raw", "per100g": {}, "unit_grams": {}},
+    }
+    m = IngredientMatcher(table, jaccard_threshold=0.3)
+    res = m.match("green pepper")  # exact won't hit ("green pepper" != "pepper green raw")
+    assert res.method == "jaccard"
+    assert res.fdc_id == 400  # smallest fdc among the tie
