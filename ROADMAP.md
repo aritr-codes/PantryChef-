@@ -36,12 +36,23 @@ project. Status legend: ⬜ not started · 🟡 in progress · ✅ done.
 - **Complexity:** Medium-High.
 - **Defer:** recsys integration, serving, full-corpus run (2.23M), published-gold eval.
 
-## Phase 3 — Recommendation & Ranking ⬜
+## Phase 3 — Recommendation & Ranking ✅
 - **Goal:** learned constraint-aware ranking (LTR + optional two-tower).
 - **Skills:** recsys, LTR, contrastive retrieval, FAISS.
-- **Metrics:** NDCG@k, recall@k vs P1 baseline.
+- **Metrics (achieved):** masked recipe-recovery rerank of the P1 candidate pool.
+  - **50k sample (seed=13):** LambdaMART **recall@10 0.971 / MRR 0.924** vs P1
+    overlap baseline 0.663 / 0.332 (candidate ceiling 0.983).
+  - **Full corpus (1.27M, 2026-06-03):** ceiling collapses to **0.706** (retrieval
+    becomes the bottleneck at 25× haystack), but the reranker's lead *grows* —
+    LambdaMART **recall@10 0.690 vs overlap 0.089 (7.7×)**, recovering 97.7% of
+    the ceiling. `sub_fill` (P2) ablation is a confirmed **null**. See
+    [docs/EVALUATION.md](docs/EVALUATION.md).
 - **Complexity:** High.
-- **Defer:** personalization, online/AB.
+- **Notable:** vectorized `candidate_pool` (row-int columnar index + `np.bincount`)
+  cut the full-corpus run ~23 h → ~65 min, byte-identical (see
+  [docs/CHALLENGES.md](docs/CHALLENGES.md)).
+- **Defer:** personalization, online/AB; **first-stage candidate recall** (the
+  exposed 0.706 ceiling) — larger/learned candidate generation or ANN.
 
 ## Phase 4 — Nutrition & Dietary Reasoning ⬜
 - **Goal:** per-serving macro/micro + dietary engine (mostly deterministic).

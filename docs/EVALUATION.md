@@ -165,6 +165,54 @@ signal — at best noise here, at worst it pulls non-gold-but-substitutable
 candidates up. Details + rationale in
 [MODEL_CARD_recommender.md](MODEL_CARD_recommender.md).
 
+#### Full corpus (1,274,290 recipes, vocab 30,481, n=5,000 eval)
+
+> **Provenance:** full RecipeNLG 2.23M cleaned (1.27M after title-dedup),
+> seed=13, mask_fraction=0.3, candidate_cap=200 — the **same protocol and the
+> same first eval queries** as the 50k row (queries iterate the corpus in file
+> order and are capped at 20k train / 5k eval, so they are the same recipes; the
+> candidate **pool is drawn from the full 1.27M haystack instead of 50k**). So
+> the arms are directly comparable to the 50k row: same task, same queries, a
+> 25× larger haystack. Run 2026-06-03 (~65 min on i7-8565U; the
+> `candidate_pool` vectorization in [CHALLENGES.md](CHALLENGES.md) made this
+> feasible — the naive path projected ~23 h).
+
+| Arm | recall@10 | mrr@10 | recall@10\|in_pool | mrr@10\|in_pool | Run |
+| --- | --------- | ------ | ------------------ | --------------- | --- |
+| **overlap (P1 baseline)** | 0.089 | 0.028 | 0.127 | — | full, 2026-06-03 |
+| linear (numpy logistic) | 0.678 | 0.589 | 0.960 | 0.834 | full, 2026-06-03 |
+| LambdaMART (+sub_fill) | 0.690 | 0.632 | 0.977 | 0.896 | full, 2026-06-03 |
+| **LambdaMART −sub_fill ★** | **0.690** | **0.632** | **0.977** | **0.896** | full, 2026-06-03 |
+| _candidate ceiling_ | _0.706_ | — | — | — | _gold-in-pool rate_ |
+
+★ **The scale-up flips the story from "easy task, saturated" to "retrieval is
+the bottleneck, and the reranker is what holds the line."** Three findings, all
+honest:
+
+1. **The candidate ceiling collapses 0.983 → 0.706.** A fixed 200-candidate pool
+   ordered by coverage now contains the gold recipe only 70.6% of the time
+   (was 98.3% at 50k): with 25× more recipes competing for 200 slots, the gold
+   is crowded out ~30% of the time. **Candidate generation — not ranking — is
+   the dominant error source at full scale.** This is the recovery-task analog
+   of the Phase-2 graph reversal: small-sample numbers were optimistic.
+2. **The learned reranker's lead grows, and it nearly saturates the (lower)
+   ceiling.** LambdaMART recall@10 0.690 vs overlap **0.089 = 7.7×** (the 50k gap
+   was 1.46×); MRR 0.632 vs 0.028 ≈ **23×**. Conditional on the gold being in the
+   pool, LambdaMART reaches **0.977 recall@10 / 0.896 MRR** — i.e. 0.690 of a
+   possible 0.706 (**97.7% of ceiling**). The P1 overlap baseline *collapses* at
+   scale (even in-pool it ranks the gold top-10 only 12.7% of the time — tiny
+   recipes score coverage 1.0 and bury it); the reranker is exactly what
+   recovers it. **The core Phase-3 claim strengthens at full corpus.**
+3. **sub_fill ablation stays NULL at full scale** — LambdaMART +sub
+   (0.690/0.632) ≈ −sub (0.690/0.632), no significant gap, same as the 50k row.
+   The honest "P2 substitution features don't help recipe recovery" result
+   holds; not an artifact of the small sample.
+
+_The exposed bottleneck — first-stage candidate recall (ceiling 0.706) — is the
+natural next retrieval-quality target (larger/learned candidate generation,
+e.g. higher cap or ANN over recipe embeddings); the reranker layer is already
+near-saturating what the pool surfaces._
+
 ### Phase 5 — Detection
 | Metric | Current | Run |
 | ------ | ------- | --- |
