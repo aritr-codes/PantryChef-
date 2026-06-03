@@ -28,6 +28,13 @@ WHITELIST: dict[int, str] = {
     1089: "iron_mg",
 }
 
+# Consumable food rows only. The Foundation Foods bulk bundle ships large
+# numbers of lab-sampling metadata rows (sub_sample_food, market_acquisition,
+# sample_food, agricultural_acquisition) in food.csv that are NOT edible food
+# entries; including them pollutes the ingredient matcher and balloons the
+# table ~10x. SR Legacy + Foundation curated foods are what we keep.
+_FOOD_TYPES: frozenset[str] = frozenset({"sr_legacy_food", "foundation_food"})
+
 # FDC measure_unit.name -> our normalized unit symbol (matches units.UNITS values).
 _UNIT_MAP: dict[str, str] = {
     "cup": "cup",
@@ -83,6 +90,8 @@ def build_artifact(csv_dir: str | Path) -> dict[int, dict]:
 
     table: dict[int, dict] = {}
     for r in _read_csv(d / "food.csv"):
+        if r.get("data_type") not in _FOOD_TYPES:
+            continue
         fdc = int(r["fdc_id"])
         table[fdc] = {"description": r["description"], "per100g": {}, "unit_grams": {}}
 

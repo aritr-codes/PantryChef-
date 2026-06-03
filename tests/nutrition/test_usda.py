@@ -106,3 +106,18 @@ def test_sugar_prefers_2000_over_1063_order_1063_first(tmp_path):
     rows = "1,300,1063,9.9\n2,300,2000,5.0\n"
     table = build_artifact(_write_minimal(tmp_path, food_nutrient_rows=rows))
     assert table[300]["per100g"]["sugar_g"] == 5.0
+
+
+def test_excludes_non_consumable_data_types(tmp_path):
+    d = _write_fixture(tmp_path)
+    # Append a sub_sample_food row (lab metadata, must be excluded) + its nutrient.
+    (d / "food.csv").write_text(
+        "fdc_id,data_type,description\n"
+        '100,sr_legacy_food,"Butter, salted"\n'
+        '200,sr_legacy_food,"Egg, whole, raw"\n'
+        '999,sub_sample_food,"Butter sub-sample lab"\n',
+        encoding="utf-8",
+    )
+    table = build_artifact(d)
+    assert set(table) == {100, 200}  # 999 excluded
+    assert 999 not in table
