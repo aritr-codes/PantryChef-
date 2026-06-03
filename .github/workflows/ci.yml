@@ -18,9 +18,12 @@ jobs:
         run: uv python install 3.11
 
       - name: Sync deps
-        # Tests cover the Phase-2 substitution arms, so CI needs the
-        # substitution extra (scipy/gensim/numpy/mlflow), not just dev.
-        run: uv sync --extra dev --extra substitution
+        # Tests cover the Phase-2 substitution arms and the Phase-3 LambdaMART
+        # reranker, so CI needs both optional extras (substitution =
+        # scipy/gensim/numpy/mlflow; recommend = lightgbm/scikit-learn), not
+        # just dev. Without `recommend`, the lambdamart leaderboard smoke test
+        # importorskips and the flagship reranker arm gets no CI coverage.
+        run: uv sync --extra dev --extra substitution --extra recommend
 
       - name: Lint
         run: uv run ruff check .

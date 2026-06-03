@@ -123,11 +123,47 @@ the covered 78.5% is scored. _GISMo's own headline metric is MRR (arXiv:2302.079
 arm-vs-their-gold on the covered subset, a "benchmarked against published gold"
 claim, not a head-to-head model reproduction._
 
-### Phase 3 — Recommendation
-| Metric | Baseline (P1 overlap) | Current | Run |
-| ------ | --------------------- | ------- | --- |
-| NDCG@10 | _tbd_ | _tbd_ | — |
-| recall@10 | _tbd_ | _tbd_ | — |
+### Phase 3 — Recommendation & Ranking (learned reranker)
+
+> **Phase 3 eval provenance:** RecipeNLG **50,000-recipe sample**, seed=13
+> (eval mask stream = seed+1=14, distinct from train), mask_fraction=0.3,
+> candidate_cap=200. **Task = recipe RECOVERY**, not general relevance: mask a
+> random 30% of a real recipe's ingredients, treat the rest as the "pantry",
+> and rerank the Phase-1 overlap candidate pool to surface that **exact** masked
+> recipe (single gold per query). Labels are **held-out** (leave-ingredients-out)
+> and never reference the substitution features, so the sub_fill ablation below
+> is non-circular. Train/test split by `recipe_id` md5 hash (~80/20). Train =
+> 19,667 kept query-groups (20,000 attempted, 333 dropped: gold unreachable in
+> pool); eval = 5,000 test queries (4,914 with gold reachable). All arms scored
+> against the **same** prebuilt candidate pools (fairness). **NDCG omitted:**
+> with a single gold per query it is a monotone transform of MRR — redundant,
+> not independent evidence (see design spec 2026-06-02).
+
+| Arm | recall@10 | mrr@10 | recall@10\|in_pool | mrr@10\|in_pool | Run |
+| --- | --------- | ------ | ------------------ | --------------- | --- |
+| **overlap (P1 baseline)** | 0.663 | 0.332 | 0.675 | 0.337 | 50k, 2026-06-03 |
+| linear (numpy logistic) | 0.966 | 0.910 | 0.983 | 0.926 | 50k, 2026-06-03 |
+| LambdaMART (+sub_fill) | 0.968 | 0.921 | 0.985 | 0.937 | 50k, 2026-06-03 |
+| **LambdaMART −sub_fill ★** | **0.971** | **0.924** | **0.988** | **0.940** | 50k, 2026-06-03 |
+| _candidate ceiling_ | _0.983_ | — | — | — | _gold-in-pool rate_ |
+
+★ **Learned reranker crushes the P1 overlap baseline:** recall@10 0.663 → 0.971
+(+0.308), MRR 0.332 → 0.924 (+0.592) on the identical candidate pools — the core
+Phase-3 claim. The **candidate ceiling is 0.983** (fraction of eval queries where
+the gold recipe is even present in the 200-candidate pool); the reranker reaches
+0.971 of a possible 0.983, i.e. **0.988 recall conditional on the gold being
+reachable** — it nearly saturates what the P1 retriever leaves on the table.
+
+**sub_fill ablation = NULL (marginally negative).** Injecting Phase-2 substitution
+knowledge (`sub_fill_max`/`sub_fill_mean` = best P2 substitute-similarity of a
+candidate's missing ingredients to the pantry) does **not** help: LambdaMART −sub
+(0.971/0.924) ≥ LambdaMART +sub (0.968/0.921), a ~0.2pt gap **within ~1 SE**
+(≈0.24pt at n=5,000) → no significant effect. This is an **honest negative
+result**, reported as-is and **not** p-hacked positive. Recovery rewards finding
+the *exact* masked recipe; substitutability is an orthogonal recommendation-quality
+signal — at best noise here, at worst it pulls non-gold-but-substitutable
+candidates up. Details + rationale in
+[MODEL_CARD_recommender.md](MODEL_CARD_recommender.md).
 
 ### Phase 5 — Detection
 | Metric | Current | Run |
