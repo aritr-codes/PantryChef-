@@ -26,7 +26,8 @@ ENV/
 data/raw/*
 data/interim/*
 data/processed/*
-data/processed/usda.json  # USDA FDC artifact (built via scripts/fetch_usda.py; redundant w/ above, kept explicit)
+# USDA FDC artifact (built via scripts/fetch_usda.py; redundant w/ above, kept explicit)
+data/processed/usda.json
 !data/**/.gitkeep
 datasets/
 *.csv
