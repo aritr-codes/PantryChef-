@@ -1,3 +1,4 @@
+from pantrychef.common.types import Recipe
 from pantrychef.data.clean import clean_recipes, to_recipe
 from pantrychef.data.store import load_recipes, save_recipes
 from pantrychef.ingredients.vocab import build_vocabulary
@@ -39,3 +40,34 @@ def test_store_roundtrip(tmp_path, sample_raws) -> None:
     loaded = load_recipes(p)
     assert [r.recipe_id for r in loaded] == [r.recipe_id for r in cleaned]
     assert loaded[0].canonical == cleaned[0].canonical
+
+
+def test_load_recipes_drops_ingredients_raw(tmp_path) -> None:
+    # ingredients_raw is the bulk of the full-corpus file and is never read after
+    # cleaning, so the loader drops it to keep the resident index lean.
+    r = Recipe(
+        recipe_id="r0",
+        title="Soup",
+        ingredients_raw=["1 cup flour", "2 eggs"],
+        canonical=["flour", "egg"],
+    )
+    p = tmp_path / "r.jsonl"
+    save_recipes([r], p)
+    loaded = load_recipes(p)
+    assert loaded[0].ingredients_raw == []  # dropped
+    assert loaded[0].canonical == ["flour", "egg"]  # preserved
+    assert loaded[0].title == "Soup"
+    assert loaded[0].recipe_id == "r0"
+
+
+def test_load_recipes_interns_canonical_across_recipes(tmp_path) -> None:
+    # Equal canonical ingredients share one str object across recipes (memory
+    # dedup): ~30k distinct ingredients backing 1.27M recipes.
+    a = Recipe(recipe_id="a", title="A", canonical=["flour", "egg"])
+    b = Recipe(recipe_id="b", title="B", canonical=["flour", "milk"])
+    p = tmp_path / "r.jsonl"
+    save_recipes([a, b], p)
+    la, lb = load_recipes(p)
+    flour_a = la.canonical[la.canonical.index("flour")]
+    flour_b = lb.canonical[lb.canonical.index("flour")]
+    assert flour_a is flour_b

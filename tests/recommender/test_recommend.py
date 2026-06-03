@@ -1,9 +1,33 @@
+import random
+
 import numpy as np
 
 from pantrychef.common.types import Recipe
 from pantrychef.recommender.features import extract_features
 from pantrychef.recommender.recommend import candidate_pool, rerank
 from pantrychef.retrieval.index import InvertedIndex
+
+
+def _ref_pool(idx, pantry, cap):
+    """Reference (pre-vectorization) candidate_pool — the byte-identical oracle.
+
+    Plain-Python coverage scoring + total-order sort (coverage desc, missing asc,
+    recipe_id asc as string). The vectorized candidate_pool must match this
+    exactly, including string tie-breaks (e.g. "r10" < "r2") and ties straddling
+    the cap boundary.
+    """
+    counts: dict[str, int] = {}
+    for ing in pantry:
+        for rid in idx.postings.get(ing, ()):
+            counts[rid] = counts.get(rid, 0) + 1
+    scored = []
+    for rid, matched in counts.items():
+        canon_len = len(idx.canon_sets[rid])
+        if not canon_len:
+            continue
+        scored.append((matched / canon_len, canon_len - matched, rid))
+    scored.sort(key=lambda t: (-t[0], t[1], t[2]))
+    return [t[2] for t in scored[:cap]]
 
 
 def _idx():
@@ -82,3 +106,22 @@ def test_candidate_pool_equal_coverage_fewer_missing_first():
     idx = InvertedIndex.build(recipes)
     pool = candidate_pool(idx, {"egg"}, cap=10)
     assert [r.recipe_id for r in pool] == ["a", "b"]  # recipe_id tie-break
+
+
+def test_candidate_pool_matches_reference_randomized():
+    # Byte-identical guard for the vectorized rewrite: random corpora with many
+    # coverage/missing ties and string-sorted ids (r0..r79, so "r10" < "r2"),
+    # checked across several caps incl. boundary-straddling ties.
+    rng = random.Random(0)
+    ingredients = [f"i{j}" for j in range(12)]
+    recipes = []
+    for k in range(80):
+        size = rng.randint(1, 6)
+        canon = rng.sample(ingredients, size)
+        recipes.append(Recipe(recipe_id=f"r{k}", title=f"t{k}", canonical=canon))
+    idx = InvertedIndex.build(recipes)
+    for _ in range(60):
+        pantry = set(rng.sample(ingredients, rng.randint(1, 5)))
+        for cap in (1, 3, 7, 25, 200):
+            got = [r.recipe_id for r in candidate_pool(idx, pantry, cap)]
+            assert got == _ref_pool(idx, pantry, cap), (sorted(pantry), cap)
