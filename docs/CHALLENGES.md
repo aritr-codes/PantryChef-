@@ -133,6 +133,39 @@ workarounds. This is the honest engineering story recruiters remember.
   blended-average-rank (`rank_hybrid = alpha × rank_emb + (1-alpha) × rank_graph`,
   alpha=0.5). The corrected formula rewards cross-arm consensus appropriately.
 
+### Full-corpus Phase-3 eval hit a memory wall, then a speed wall   (2026-06-03, Phase 3)
+- **Problem:** the Phase-3 reranker leaderboard had only ever run on a 50k
+  sample. Scaling it to the full 1.27M-recipe corpus (to confirm the headline
+  holds at scale) hit two walls in sequence.
+- **Constraint:** local i7-8565U, 16 GB RAM (often <4 GB free).
+- **Wall 1 — memory.** `load_recipes` materialized 1.27M **pydantic** `Recipe`
+  objects, each carrying `ingredients_raw` (the bulk of the 625 MB file) which
+  the reranker never reads, and the inverted index pinned those full objects.
+  Projected ~5 GB resident → OOM-tight. **Resolution:** stream-load dropping
+  `ingredients_raw` and intern canonical strings (one object per the ~30k
+  distinct ingredients, shared across 1.27M recipes). Peak resident **5 GB →
+  2.8 GB**, output-identical (nothing downstream reads the dropped field).
+- **Wall 2 — speed.** `candidate_pool` scored candidates with a pure-Python dict
+  loop over postings. At full scale common pantry ingredients (salt, sugar,
+  butter…) have postings spanning hundreds of thousands of recipes, so each pool
+  cost **3.3 s** — the full run projected to **~23 h**. Pruning is *not* lossless
+  here: coverage normalizes by recipe length, so a 1-ingredient recipe matching
+  one common pantry item scores coverage 1.0 and legitimately competes. You must
+  count every candidate. **Resolution:** vectorize losslessly — build a row-int
+  columnar view of the index (`postings_rows`/`canon_len_by_row`/`id_rank_by_row`)
+  and score with `np.bincount` + `np.lexsort` instead of the Python loop. The
+  string tie-break (`"r10" < "r2"`) is reproduced via a precomputed string-sort
+  rank, so the result is **byte-identical** (locked by a randomized oracle test
+  vs the old algorithm across tie-heavy cases). **3279 ms → 89 ms/pool (~37×)**;
+  full run 23 h → **~65 min**. The 50k numbers were unaffected (same output).
+- **Payoff (the real finding):** at full scale the P1 candidate **ceiling
+  collapses 0.983 → 0.706** — retrieval recall, not ranking, becomes the
+  bottleneck — yet the learned reranker's lead over the overlap baseline *grows*
+  (recall@10 7.7×, MRR ~23×) and it recovers **97.7% of the lower ceiling**. The
+  Phase-3 claim strengthens; see [EVALUATION.md](EVALUATION.md). Lesson echoed
+  from Phase 2: validate headline metrics at target scale — small-sample numbers
+  flatter both the baseline and the absolute scores.
+
 ---
 
 _Anticipated (from design risk analysis):_

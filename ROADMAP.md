@@ -37,19 +37,22 @@ project. Status legend: ⬜ not started · 🟡 in progress · ✅ done.
 - **Defer:** recsys integration, serving, full-corpus run (2.23M), published-gold eval.
 
 ## Phase 3 — Recommendation & Ranking ✅
-- **Goal:** learned constraint-aware ranking (rerank P1 overlap candidates to
-  recover a pantry-masked recipe; held-out leave-ingredients-out labels).
-- **Skills:** recsys, LTR (LinearRanker + LambdaMART), feature engineering.
-- **Metrics (achieved, 20k train / 5k eval, mask 0.3, seed=42):** overlap baseline
-  recall@10 **0.663** / MRR 0.332 → LambdaMART **0.968** / **0.921** (ceiling 0.983);
-  full-corpus (1.27M) reranker recall@10 **0.690 vs overlap 0.089 (7.7×)**. See
-  [docs/EVALUATION.md](docs/EVALUATION.md) and
-  [docs/MODEL_CARD_recommender.md](docs/MODEL_CARD_recommender.md).
+- **Goal:** learned constraint-aware ranking (LTR + optional two-tower).
+- **Skills:** recsys, LTR, contrastive retrieval, FAISS.
+- **Metrics (achieved):** masked recipe-recovery rerank of the P1 candidate pool.
+  - **50k sample (seed=13):** LambdaMART **recall@10 0.971 / MRR 0.924** vs P1
+    overlap baseline 0.663 / 0.332 (candidate ceiling 0.983).
+  - **Full corpus (1.27M, 2026-06-03):** ceiling collapses to **0.706** (retrieval
+    becomes the bottleneck at 25× haystack), but the reranker's lead *grows* —
+    LambdaMART **recall@10 0.690 vs overlap 0.089 (7.7×)**, recovering 97.7% of
+    the ceiling. `sub_fill` (P2) ablation is a confirmed **null**. See
+    [docs/EVALUATION.md](docs/EVALUATION.md).
 - **Complexity:** High.
-- **Notable:** learned ranker crushes overlap (recall 0.66→0.97); P2 substitution
-  features = honest null on recovery; reranker lead *grows* at full-corpus scale
-  even as the candidate ceiling collapses (retrieval is the bottleneck). Tagged `v0.3.0`.
-- **Defer:** personalization, online/AB.
+- **Notable:** vectorized `candidate_pool` (row-int columnar index + `np.bincount`)
+  cut the full-corpus run ~23 h → ~65 min, byte-identical (see
+  [docs/CHALLENGES.md](docs/CHALLENGES.md)).
+- **Defer:** personalization, online/AB; **first-stage candidate recall** (the
+  exposed 0.706 ceiling) — larger/learned candidate generation or ANN.
 
 ## Phase 4 — Nutrition & Dietary Reasoning ✅
 - **Goal:** per-recipe macro/micro estimates + dietary engine (mostly deterministic).
