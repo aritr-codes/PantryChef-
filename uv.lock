@@ -1871,6 +1871,7 @@ dev = [
 ]
 recommend = [
     { name = "lightgbm" },
+    { name = "scikit-learn" },
 ]
 substitution = [
     { name = "gensim" },
@@ -1892,6 +1893,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
+    { name = "scikit-learn", marker = "extra == 'recommend'", specifier = ">=1.4" },
     { name = "scipy", marker = "extra == 'substitution'", specifier = ">=1.11" },
 ]
 provides-extras = ["dev", "substitution", "recommend"]
