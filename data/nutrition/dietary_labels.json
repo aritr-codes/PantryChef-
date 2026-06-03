@@ -1,0 +1,12 @@
+{
+  "butter": ["dairy", "animal_product"],
+  "egg": ["egg", "animal_product"],
+  "eggplant": [],
+  "beef": ["meat", "animal_product"],
+  "olive oil": [],
+  "wheat flour": ["gluten"],
+  "honey": ["honey", "animal_product"],
+  "tofu": [],
+  "salmon": ["fish", "animal_product"],
+  "almond flour": []
+}
