@@ -40,7 +40,7 @@ _LEAF_WORDS: dict[str, str] = {
     "turkey": "meat",
     "veal": "meat",
     "lard": "meat",
-    "gelatin": "meat",
+    "gelatin": "meat",  # gelatin: single token, lives in _LEAF_WORDS (was a _CURATED override)
     "fish": "fish",
     "salmon": "fish",
     "tuna": "fish",
@@ -96,11 +96,13 @@ _KEYWORDS: dict[str, tuple[str, ...]] = {}
 
 
 def _ancestors(cat: str) -> set[str]:
-    """Return *cat* plus all its ancestor categories."""
-    out = {cat}
-    while cat in _PARENT:
-        cat = _PARENT[cat]
+    """Return *cat* plus all its ancestor categories (cycle-safe)."""
+    out: set[str] = set()
+    while cat not in out:
         out.add(cat)
+        if cat not in _PARENT:
+            break
+        cat = _PARENT[cat]
     return out
 
 
