@@ -30,9 +30,26 @@ the data is and *how to reproduce* it.
 
 ### USDA FoodData Central  (Phase 4 — nutrition)
 - **Why:** authoritative free nutrition data (macros + micros).
-- **Access:** free API + bulk CSV download.
-- **License:** public domain (US Gov).
-- **Use:** join parsed ingredient + quantity → per-serving nutrition.
+- **Access:** free bulk CSV download (FoodData Central full-download datasets).
+- **Bundles used (record release + date):**
+  - **SR Legacy** bundle release **2018-04** — 7,793 `sr_legacy_food` entries.
+  - **Foundation Foods** bundle release **2025-04-24** — 411 `foundation_food`
+    entries. (This bundle also ships ~73.7k lab-sampling metadata rows —
+    `sub_sample_food` / `market_acquisition` / `sample_food` /
+    `agricultural_acquisition` — which `scripts/fetch_usda.py` filters **out**
+    via a `data_type` whitelist; only `sr_legacy_food` + `foundation_food` are
+    kept.)
+- **Artifact:** combined → `data/processed/usda.json` = **8,204 foods**
+  (gitignored — large and regenerable).
+- **License:** **public domain** (U.S. Government work, no copyright). FDC is
+  freely redistributable; it requests citation of the **release + date**. (Unlike
+  the GISMo benchmark below, which is CC BY-NC.) We still gitignore the artifact
+  because it is large and regenerable.
+- **Use:** join parsed ingredient + quantity → per-recipe nutrition **estimates**
+  (no per-serving — RecipeNLG has no servings field).
+- **Regenerate:** `uv run python scripts/fetch_usda.py --csv-dir <dir>` (point at
+  the unzipped FDC CSV directory). Record release dates + food count of each run
+  here.
 
 ### Roboflow fridge / grocery detection sets  (Phase 5 — CV)
 - **Why:** YOLO-ready labeled images, free, small (~1–5k images).

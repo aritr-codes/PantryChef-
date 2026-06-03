@@ -43,12 +43,22 @@ project. Status legend: ⬜ not started · 🟡 in progress · ✅ done.
 - **Complexity:** High.
 - **Defer:** personalization, online/AB.
 
-## Phase 4 — Nutrition & Dietary Reasoning ⬜
-- **Goal:** per-serving macro/micro + dietary engine (mostly deterministic).
+## Phase 4 — Nutrition & Dietary Reasoning ✅
+- **Goal:** per-recipe macro/micro estimates + dietary engine (mostly deterministic).
 - **Skills:** knowledge integration, constraint logic, light regression.
-- **Metrics:** nutrition coverage %, dietary-class accuracy, imputation MAE.
+- **Metrics (achieved, 5k RecipeNLG sample, USDA FDC 8,204-food join, seed=42):**
+  USDA **match coverage 0.800** / **mass coverage 0.487**; nutrition completeness
+  0.560; dietary accuracy **1.0** (n=10 sanity set). See
+  [docs/EVALUATION.md](docs/EVALUATION.md) and
+  [docs/MODEL_CARD_nutrition.md](docs/MODEL_CARD_nutrition.md).
 - **Complexity:** Medium.
-- **Defer:** deep micronutrients if data sparse.
+- **Notable:** ontology dietary engine fixes the substring tagger (eggplant no
+  longer tagged "egg"); USDA SR Legacy 2018-04 + Foundation 2025-04-24 join
+  (match-cov 0.80 / mass-cov 0.49); gated macro imputer **gated-in** (gate
+  tripped: match-cov < 0.80 and median-unresolved-mass 0.50 > 0.20). No recipe-
+  macro gold → coverage-validated estimates only; not for medical use.
+- **Defer:** deep micronutrients if data sparse; wiring imputed macros into
+  recipe totals; ~100-entry dietary label set.
 
 ## Phase 5 — Computer Vision: Ingredient Detection ⬜
 - **Goal:** fridge/pantry photo → detected ingredients → pipeline.
