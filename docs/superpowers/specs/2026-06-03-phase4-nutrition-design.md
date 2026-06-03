@@ -67,10 +67,11 @@ P4), with an import shim so P2 is behaviorally untouched.
 - `scripts/fetch_usda.py` — download FDC SR Legacy + Foundation bundles, parse
   `food.csv` / `food_nutrient.csv` / `nutrient.csv` / `food_portion.csv`, emit the
   compact `usda.json`. Raw CSVs gitignored.
-- **Commit the derived `usda.json`** — it is small (~MB, only whitelisted
-  nutrients for a few-thousand generic foods) and **public domain (US Gov)**, so
-  committing it makes the eval reproducible with no download. (Exception to the
-  "data gitignored" norm, justified by size + license + reproducibility.)
+- **`usda.json` is gitignored and regenerated** via `scripts/fetch_usda.py`
+  (consistent with the project norm — derived data is gitignored and rebuilt from
+  scripts, same as `recipes.jsonl` and the GISMo CSV). The script is deterministic
+  given a pinned FDC release, so the eval stays reproducible without committing the
+  artifact. Record the FDC release date/version in [DATASET.md](../../DATASET.md).
 - `data/nutrition/aliases.json` — curated `canonical → fdc_id` overrides for
   high-frequency ingredients (committed, hand-maintained).
 - `data/nutrition/dietary_labels.json` — hand-labeled `ingredient → {categories}`
@@ -186,7 +187,8 @@ constraint stated. Numbers logged to MLflow per project convention.
 ## Deliverables
 
 `pantrychef/nutrition/` (usda, match, mass, aggregate, [impute]), shared
-`pantrychef/dietary/` (ontology + shim), `scripts/fetch_usda.py`, committed
-`data/processed/usda.json` + `data/nutrition/{aliases,dietary_labels}.json`,
-`pantrychef/eval/nutrition_{eval,main}.py`, EVALUATION.md + ROADMAP updates, full
-test suite. Standalone-taggable as `v0.4.0`.
+`pantrychef/dietary/` (ontology + shim), `scripts/fetch_usda.py` (regenerates the
+gitignored `data/processed/usda.json`), committed
+`data/nutrition/{aliases,dietary_labels}.json`,
+`pantrychef/eval/nutrition_{eval,main}.py`, EVALUATION.md + ROADMAP + DATASET.md
+updates, full test suite. Standalone-taggable as `v0.4.0`.
