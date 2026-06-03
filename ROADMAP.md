@@ -36,11 +36,19 @@ project. Status legend: ⬜ not started · 🟡 in progress · ✅ done.
 - **Complexity:** Medium-High.
 - **Defer:** recsys integration, serving, full-corpus run (2.23M), published-gold eval.
 
-## Phase 3 — Recommendation & Ranking ⬜
-- **Goal:** learned constraint-aware ranking (LTR + optional two-tower).
-- **Skills:** recsys, LTR, contrastive retrieval, FAISS.
-- **Metrics:** NDCG@k, recall@k vs P1 baseline.
+## Phase 3 — Recommendation & Ranking ✅
+- **Goal:** learned constraint-aware ranking (rerank P1 overlap candidates to
+  recover a pantry-masked recipe; held-out leave-ingredients-out labels).
+- **Skills:** recsys, LTR (LinearRanker + LambdaMART), feature engineering.
+- **Metrics (achieved, 20k train / 5k eval, mask 0.3, seed=42):** overlap baseline
+  recall@10 **0.663** / MRR 0.332 → LambdaMART **0.968** / **0.921** (ceiling 0.983);
+  full-corpus (1.27M) reranker recall@10 **0.690 vs overlap 0.089 (7.7×)**. See
+  [docs/EVALUATION.md](docs/EVALUATION.md) and
+  [docs/MODEL_CARD_recommender.md](docs/MODEL_CARD_recommender.md).
 - **Complexity:** High.
+- **Notable:** learned ranker crushes overlap (recall 0.66→0.97); P2 substitution
+  features = honest null on recovery; reranker lead *grows* at full-corpus scale
+  even as the candidate ceiling collapses (retrieval is the bottleneck). Tagged `v0.3.0`.
 - **Defer:** personalization, online/AB.
 
 ## Phase 4 — Nutrition & Dietary Reasoning ✅
