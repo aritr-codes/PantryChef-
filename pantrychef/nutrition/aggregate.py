@@ -37,7 +37,7 @@ class RecipeNutrition:
 
 
 def _facts_from(totals: dict[str, float]) -> NutritionFacts:
-    named = {field_: totals.get(key, 0.0) for key, field_ in _NAMED.items()}
+    named = {field_: totals.get(key) for key, field_ in _NAMED.items()}
     micros = {k: v for k, v in totals.items() if k not in _NAMED}
     return NutritionFacts(**named, micros=micros)
 
@@ -59,7 +59,9 @@ def aggregate(
         if res.fdc_id is None:
             continue
         n_matched += 1
-        food = matcher.table[res.fdc_id]
+        food = matcher.table.get(res.fdc_id)
+        if food is None:
+            continue
         grams, ok = to_grams(pi.quantity, pi.unit, pi.canonical, food)
         if not ok or grams is None:
             continue
