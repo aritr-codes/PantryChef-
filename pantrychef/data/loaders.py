@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from pantrychef.config import get_settings
 from pantrychef.data.schemas import RawRecipe
 
 
@@ -49,3 +50,14 @@ def load_recipenlg(
                 link=str(row.get("link", "")),
                 source=str(row.get("source", "")),
             )
+
+
+def load_raw_recipes(limit: int | None = None) -> list[RawRecipe]:
+    """Eagerly load up to ``limit`` raw recipes from ``data/raw/full_dataset.csv``.
+
+    Thin convenience wrapper over :func:`load_recipenlg` for callers (e.g. the
+    Phase-4 nutrition eval) that need the raw ingredient lines WITH quantities,
+    materialized into a list. ``RawRecipe.ingredients`` is the raw text column.
+    """
+    raw_csv = get_settings().raw_dir / "full_dataset.csv"
+    return list(load_recipenlg(raw_csv, max_rows=limit))

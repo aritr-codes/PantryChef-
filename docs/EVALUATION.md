@@ -213,6 +213,64 @@ natural next retrieval-quality target (larger/learned candidate generation,
 e.g. higher cap or ANN over recipe embeddings); the reranker layer is already
 near-saturating what the pool surfaces._
 
+### Phase 4 — Nutrition & Dietary
+
+> **Phase 4 eval provenance:** USDA FoodData Central join — **SR Legacy 2018-04**
+> (7,793 foods) + **Foundation Foods 2025-04-24** (411 foods) = **8,204-food**
+> artifact (`data/processed/usda.json`, gitignored; regenerate via
+> `scripts/fetch_usda.py --csv-dir <dir>`). Evaluated over a **5,000-recipe**
+> RecipeNLG raw sample (with quantities), **37,472 ingredient lines**, seed=42.
+> Run: `uv run python -m pantrychef.eval.nutrition_main --max-rows 5000`.
+> **No recipe-level nutrition gold exists** (RecipeNLG has no macro labels and no
+> servings field), so this is a **coverage** evaluation, not a recipe-macro
+> accuracy one — see the honesty constraint below.
+
+| Metric | Current | Run |
+| ------ | ------- | --- |
+| **USDA match coverage** | **0.800** | 5k, 2026-06-03 |
+| mass coverage | 0.487 | 5k, 2026-06-03 |
+| nutrition completeness (≥50% lines mass-resolved) | 0.560 | 5k, 2026-06-03 |
+| median unresolved-mass fraction | 0.50 | 5k, 2026-06-03 |
+| dietary accuracy (n=10 hand-labeled) | **1.0** | 5k, 2026-06-03 |
+
+_Match coverage was lifted from a **0.736** baseline to **0.800** by curating 34
+high-frequency aliases in `data/nutrition/aliases.json` (the tiered matcher:
+curated alias → exact normalized full + before-comma head → token-Jaccard at
+threshold 0.34; below threshold is a reported gap, never a guess). Mass coverage
+is the honest fraction of lines resolved to grams (mass units by fixed factor;
+volume via USDA portion gram-weight else per-class density fallback;
+count/portion via USDA "each" or curated per-item grams); anything unresolved is
+`(None, False)` and counts toward the coverage gap, never imputed as 0._
+
+**Dietary accuracy is a sanity check, not a robust estimate.** n=10 is a
+hand-labeled smoke set (`data/nutrition/dietary_labels.json`); 1.0 means the
+ontology engine agrees with all 10 labels, **not** that it is 100% accurate at
+scale. Expanding the labeled set to ~100 entries is future work.
+
+**Ontology substring-fix (qualitative).** The Phase-2 flat-substring dietary
+tagger was **replaced** (not run side-by-side) by a token-leaf-word ontology with
+category inheritance (`animal_product` > `meat`/`fish`/`dairy`/`egg`/`honey`).
+This fixes the substring class of false positives — concretely **"eggplant" is no
+longer tagged as containing "egg"** — plus curated phrase overrides
+(worcestershire / fish sauce → `fish`, soy sauce → `gluten`). Because the old
+tagger was removed rather than benchmarked alongside, this is reported as a
+**qualitative fix**, not an old-vs-new accuracy delta.
+
+**Impute-gate decision: TRIPPED → macro imputer built.** The gate fires because
+`match_coverage` (0.800) is `< 0.80` **and** `median_unresolved_mass` (0.50) is
+`> 0.20`. In response, a gated macro imputer (`pantrychef/nutrition/impute.py`:
+HashingVectorizer + Ridge, MAE measured on held-out matched ingredients) was
+built and validated at unit level. **Honesty note:** the imputer is a standalone
+gated module; wiring its predictions into `RecipeNutrition` totals at corpus
+scale is future work — recipe totals **do not currently use imputed macros**.
+
+**Honesty constraint.** No recipe-level nutrition gold exists, so Phase 4 is
+validated via (1) coverage metrics, (2) per-ingredient unit tests, and (3)
+aggregation arithmetic tests — **NOT** recipe-macro accuracy. All recipe macros
+are **estimates**. There are **no per-serving values** (RecipeNLG has no servings
+field). Absent nutrients are reported as `None` (unknown), never `0.0`. **Not for
+medical, clinical, or allergen-safety use.**
+
 ### Phase 5 — Detection
 | Metric | Current | Run |
 | ------ | ------- | --- |
