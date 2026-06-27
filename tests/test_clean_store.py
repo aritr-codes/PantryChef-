@@ -71,3 +71,9 @@ def test_load_recipes_interns_canonical_across_recipes(tmp_path) -> None:
     flour_a = la.canonical[la.canonical.index("flour")]
     flour_b = lb.canonical[lb.canonical.index("flour")]
     assert flour_a is flour_b
+
+
+def test_load_recipes_limit_zero_returns_empty(tmp_path) -> None:
+    p = tmp_path / "r.jsonl"
+    save_recipes([Recipe(recipe_id="a", title="A", canonical=["flour"])], p)
+    assert load_recipes(p, limit=0) == []
