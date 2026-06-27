@@ -67,6 +67,56 @@ class ContextGraph:
         else:
             self._spb = None
 
+    @property
+    def overlap_shrink(self) -> float:
+        """Return the overlap-shrinkage hyperparameter."""
+        return self._beta
+
+    def to_state(self) -> dict[str, object]:
+        """Return the exact inference state needed for persisted bundles."""
+        return {
+            "vocab": list(self.vocab),
+            "normalized_sppmi": self._mn,
+            "cooccur": self._c,
+            "lam": float(self.lam),
+            "overlap_shrink": float(self._beta),
+        }
+
+    @classmethod
+    def from_state(
+        cls,
+        normalized_sppmi: sparse.csr_matrix,
+        vocab: Sequence[str],
+        cooccur: sparse.csr_matrix,
+        lam: float = 0.5,
+        overlap_shrink: float = 0.0,
+    ) -> ContextGraph:
+        """Rebuild a graph from persisted inference-time matrices only."""
+        if overlap_shrink < 0 or not np.isfinite(overlap_shrink):
+            raise ValueError(f"overlap_shrink must be >= 0 and finite; got {overlap_shrink}")
+        n = len(vocab)
+        mn = normalized_sppmi.tocsr()
+        cmat = cooccur.tocsr()
+        if mn.shape != (n, n) or cmat.shape != (n, n):
+            raise ValueError(
+                "normalized_sppmi, cooccur, and vocab must agree in size: "
+                f"expected ({n}, {n}), got normalized_sppmi={mn.shape} cooccur={cmat.shape}"
+            )
+        obj = cls.__new__(cls)
+        obj.vocab = list(vocab)
+        obj.idx = {w: i for i, w in enumerate(obj.vocab)}
+        obj._mn = mn
+        obj._c = cmat
+        obj.lam = lam
+        obj._beta = overlap_shrink
+        if overlap_shrink > 0:
+            spb = (mn != 0).astype(np.int32).tocsr()
+            spb.eliminate_zeros()
+            obj._spb = spb
+        else:
+            obj._spb = None
+        return obj
+
     def neighbors(
         self, ingredient: str, k: int = 5, lam: float | None = None
     ) -> list[tuple[str, float]]:

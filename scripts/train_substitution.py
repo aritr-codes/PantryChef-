@@ -2,7 +2,7 @@
 
     uv run python scripts/train_substitution.py --epochs 5 --dims 100
 
-Reads data/processed/{recipes.jsonl,vocab.json}. Saves word2vec vectors to
+Reads data/processed/{recipes.jsonl,vocab.json}. Saves one substitution bundle to
 models/substitution/. Logs params to MLflow. CPU-only; full 2.23M corpus trains
 in minutes.
 """
@@ -17,6 +17,7 @@ from pantrychef.common import get_logger
 from pantrychef.config import get_settings
 from pantrychef.data.store import load_recipes
 from pantrychef.ingredients.vocab import load_vocabulary
+from pantrychef.substitution.bundle import DEFAULT_BUNDLE_NAME
 from pantrychef.substitution.config import SubConfig
 from pantrychef.substitution.train import train_artifacts
 
@@ -71,8 +72,9 @@ def main() -> int:
         )
         artifacts = train_artifacts(recipes, vocab, cfg)
         out = s.models_dir / "substitution"
-        artifacts.embeddings.save(out / "word2vec.kv")
-        log.info("Saved embeddings to %s", out / "word2vec.kv")
+        bundle = out / DEFAULT_BUNDLE_NAME
+        artifacts.save_bundle(bundle)
+        log.info("Saved substitution bundle to %s", bundle)
     return 0
 
 
