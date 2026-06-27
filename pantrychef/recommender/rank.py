@@ -8,7 +8,7 @@ lambdarank; ignored by the linear model).
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
 import numpy as np
 
@@ -59,6 +59,34 @@ class LinearRanker:
         return self._standardize(X) @ self.w_ + self.b_
 
 
+    def to_state(self) -> dict[str, Any]:
+        """Return the fitted linear model state for artifact persistence."""
+        if self.w_ is None or self.mean_ is None or self.std_ is None:
+            raise RuntimeError("LinearRanker not fitted")
+        return {
+            "lr": self.lr,
+            "epochs": self.epochs,
+            "seed": self.seed,
+            "w": np.asarray(self.w_, dtype=float),
+            "b": float(self.b_),
+            "mean": np.asarray(self.mean_, dtype=float),
+            "std": np.asarray(self.std_, dtype=float),
+        }
+
+    @classmethod
+    def from_state(cls, state: dict[str, Any]) -> LinearRanker:
+        """Restore a fitted linear model from persisted state."""
+        model = cls(
+            lr=float(state["lr"]),
+            epochs=int(state["epochs"]),
+            seed=int(state["seed"]),
+        )
+        model.w_ = np.asarray(state["w"], dtype=float)
+        model.b_ = float(state["b"])
+        model.mean_ = np.asarray(state["mean"], dtype=float)
+        model.std_ = np.asarray(state["std"], dtype=float)
+        return model
+
 class LambdaMARTRanker:
     """LightGBM LambdaMART (objective='lambdarank'). Lazy import keeps core clean."""
 
@@ -105,3 +133,37 @@ class LambdaMARTRanker:
         if self._model is None:
             raise RuntimeError("LambdaMARTRanker not fitted")
         return np.asarray(self._model.predict(X))
+
+
+    def to_state(self) -> dict[str, Any]:
+        """Return the fitted LambdaMART state for artifact persistence."""
+        if self._model is None:
+            raise RuntimeError("LambdaMARTRanker not fitted")
+        booster = self._model.booster_ if hasattr(self._model, "booster_") else self._model
+        return {
+            "num_leaves": self.num_leaves,
+            "n_estimators": self.n_estimators,
+            "min_child_samples": self.min_child_samples,
+            "seed": self.seed,
+            "booster": booster.model_to_string(),
+        }
+
+    @classmethod
+    def from_state(cls, state: dict[str, Any]) -> LambdaMARTRanker:
+        """Restore a fitted LambdaMART model from persisted state."""
+        try:
+            import lightgbm as lgb
+        except ImportError as e:  # pragma: no cover
+            raise RuntimeError(
+                "LambdaMARTRanker needs the [recommend] extra "
+                "(lightgbm + scikit-learn): uv sync --extra recommend"
+            ) from e
+        model = cls(
+            num_leaves=int(state["num_leaves"]),
+            n_estimators=int(state["n_estimators"]),
+            min_child_samples=int(state["min_child_samples"]),
+            seed=int(state["seed"]),
+        )
+        model._model = lgb.Booster(model_str=str(state["booster"]))
+        return model
+
