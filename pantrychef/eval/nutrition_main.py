@@ -22,6 +22,14 @@ from pantrychef.nutrition.usda import load_artifact
 log = get_logger(__name__)
 
 
+def impute_gate_tripped(report: dict[str, float], cfg: NutritionConfig) -> bool:
+    """Return True when either coverage gate says the macro imputer is warranted."""
+    return (
+        report["match_coverage"] < cfg.impute_match_cov_gate
+        or report["median_unresolved_mass"] > cfg.impute_unresolved_mass_gate
+    )
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Phase 4 nutrition coverage report.")
     ap.add_argument("--max-rows", type=int, default=None)
@@ -54,10 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     # Diagnostic only: signals whether the macro imputer is worth building. The
     # imputer (pantrychef/nutrition/impute.py) is a standalone gated component;
     # its predictions are NOT wired into the coverage/macros reported above.
-    gate = (
-        rep["match_coverage"] < cfg.impute_match_cov_gate
-        or rep["median_unresolved_mass"] > cfg.impute_unresolved_mass_gate
-    )
+    gate = impute_gate_tripped(rep, cfg)
     log.info("coverage: %s", rep)
     log.info("dietary_accuracy: %s", acc)
     log.info("imputation_gate_tripped (advisory): %s", gate)

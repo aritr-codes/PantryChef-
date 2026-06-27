@@ -280,12 +280,13 @@ tagger was removed rather than benchmarked alongside, this is reported as a
 **qualitative fix**, not an old-vs-new accuracy delta.
 
 **Impute-gate decision: TRIPPED → macro imputer built.** The gate fires because
-`match_coverage` (0.800) is `< 0.80` **and** `median_unresolved_mass` (0.50) is
-`> 0.20`. In response, a gated macro imputer (`pantrychef/nutrition/impute.py`:
-HashingVectorizer + Ridge, MAE measured on held-out matched ingredients) was
-built and validated at unit level. **Honesty note:** the imputer is a standalone
-gated module; wiring its predictions into `RecipeNutrition` totals at corpus
-scale is future work — recipe totals **do not currently use imputed macros**.
+`median_unresolved_mass` (0.50) is `> 0.20`; `match_coverage` (0.800) is exactly
+at the threshold, so it does **not** satisfy `< 0.80`. In response, a gated macro
+imputer (`pantrychef/nutrition/impute.py`: HashingVectorizer + Ridge, MAE measured
+on held-out matched ingredients) was built and validated at unit level. **Honesty
+note:** the imputer is a standalone gated module; wiring its predictions into
+`RecipeNutrition` totals at corpus scale is future work — recipe totals **do not
+currently use imputed macros**.
 
 **Honesty constraint.** No recipe-level nutrition gold exists, so Phase 4 is
 validated via (1) coverage metrics, (2) per-ingredient unit tests, and (3)

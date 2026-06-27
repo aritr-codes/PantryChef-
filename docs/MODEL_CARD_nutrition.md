@@ -89,9 +89,10 @@ reported qualitatively, not as an accuracy delta.
 ### 5 — Gated macro imputer (`pantrychef/nutrition/impute.py`)
 A HashingVectorizer + Ridge regressor that predicts macros from an ingredient
 name, with MAE measured on held-out matched ingredients. It is built **only when a
-gate trips**: `match_coverage < 0.80` **and** `median_unresolved_mass > 0.20`. On
-the 5k run the gate tripped (0.800 < 0.80 boundary, median unresolved 0.50 > 0.20)
-so the imputer was built and validated at unit level. **It is not yet wired into
+gate trips**: `match_coverage < 0.80` **or** `median_unresolved_mass > 0.20`. On
+the 5k run the gate tripped because median unresolved mass was high (0.50 > 0.20),
+even though match coverage sat exactly at the threshold (0.800 is not `< 0.80`).
+The imputer was built and validated at unit level. **It is not yet wired into
 `RecipeNutrition` totals** — see Limitations.
 
 ---
