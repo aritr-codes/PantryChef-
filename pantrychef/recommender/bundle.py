@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -12,12 +13,26 @@ from zipfile import ZIP_DEFLATED, ZipFile
 import numpy as np
 
 from pantrychef import __version__
+from pantrychef.common.types import Recipe
 from pantrychef.recommender.config import RecConfig
 from pantrychef.recommender.rank import LambdaMARTRanker, LinearRanker
 from pantrychef.retrieval.index import InvertedIndex
 
 DEFAULT_BUNDLE_NAME = "recommender_bundle.zip"
 BUNDLE_VERSION = 1
+
+
+def corpus_fingerprint(recipes: Sequence[Recipe]) -> str:
+    """Return a deterministic fingerprint for the recommender corpus."""
+    h = hashlib.sha256()
+    for recipe in recipes:
+        h.update(recipe.recipe_id.encode("utf-8"))
+        h.update(b"\x1f")
+        for ingredient in recipe.canonical:
+            h.update(ingredient.encode("utf-8"))
+            h.update(b"\x1f")
+        h.update(b"\n")
+    return h.hexdigest()
 
 
 @dataclasses.dataclass
@@ -33,11 +48,9 @@ class BundledRanker:
         return {"kind": self.kind, "columns": list(self.columns)}
 
     def to_state(self) -> dict[str, Any]:
-        if self.kind == "linear":
-            return self.model.to_state()
-        if self.kind == "lambdamart":
-            return self.model.to_state()
-        raise ValueError(f"unsupported ranker kind: {self.kind}")
+        if self.kind not in {"linear", "lambdamart"}:
+            raise ValueError(f"unsupported ranker kind: {self.kind}")
+        return self.model.to_state()
 
     @classmethod
     def from_state(

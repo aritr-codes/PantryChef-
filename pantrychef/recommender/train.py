@@ -12,14 +12,22 @@ import numpy as np
 
 from pantrychef.common import get_logger
 from pantrychef.common.types import Recipe
+from pantrychef.recommender.bundle import BundledRanker, RecommenderBundle, corpus_fingerprint
 from pantrychef.recommender.config import RecConfig
-from pantrychef.recommender.features import FEATURE_NAMES, SubLookup, extract_features, to_matrix
+from pantrychef.recommender.features import (
+    FEATURE_NAMES,
+    SUB_FEATURES,
+    SubLookup,
+    extract_features,
+    to_matrix,
+)
 from pantrychef.recommender.query_sim import is_train, make_query
-from pantrychef.recommender.rank import Ranker
+from pantrychef.recommender.rank import LambdaMARTRanker, LinearRanker, Ranker
 from pantrychef.recommender.recommend import candidate_pool
 from pantrychef.retrieval.index import InvertedIndex
 
 log = get_logger(__name__)
+NO_SUB_COLUMNS = tuple(c for c in FEATURE_NAMES if c not in SUB_FEATURES)
 
 
 def build_examples(
@@ -94,6 +102,49 @@ def build_dataset(
     """(X, y, group_sizes, stats) over masked queries — build_examples + to_matrix."""
     feats, labels, groups, stats = build_examples(recipes, index, sub_lookup, cfg, train_only)
     return to_matrix(feats, columns), np.array(labels, dtype=int), groups, stats
+
+
+def train_bundle(
+    recipes: list[Recipe],
+    index: InvertedIndex,
+    sub_lookup: SubLookup,
+    cfg: RecConfig,
+    use_lambdamart: bool = True,
+    metadata: dict[str, object] | None = None,
+) -> tuple[RecommenderBundle, dict[str, int]]:
+    """Train the recommender models once and package them into a bundle."""
+    feats, labels, groups, stats = build_examples(recipes, index, sub_lookup, cfg, train_only=True)
+    if not groups:
+        raise ValueError("build_examples produced 0 training groups; check corpus/config")
+    y = np.array(labels, dtype=int)
+    x_full = to_matrix(feats, FEATURE_NAMES)
+    models = {
+        "linear": BundledRanker(
+            name="linear",
+            kind="linear",
+            columns=FEATURE_NAMES,
+            model=LinearRanker(seed=cfg.seed).fit(x_full, y, groups),
+        )
+    }
+    if use_lambdamart:
+        models["lambdamart"] = BundledRanker(
+            name="lambdamart",
+            kind="lambdamart",
+            columns=FEATURE_NAMES,
+            model=LambdaMARTRanker(seed=cfg.seed).fit(x_full, y, groups),
+        )
+        models["lambdamart-nosub"] = BundledRanker(
+            name="lambdamart-nosub",
+            kind="lambdamart",
+            columns=NO_SUB_COLUMNS,
+            model=LambdaMARTRanker(seed=cfg.seed).fit(to_matrix(feats, NO_SUB_COLUMNS), y, groups),
+        )
+    bundle_metadata = {
+        "recipe_count": len(recipes),
+        "corpus_fingerprint": corpus_fingerprint(recipes),
+        **(metadata or {}),
+    }
+    return RecommenderBundle(index=index, cfg=cfg, models=models, metadata=bundle_metadata), stats
 
 
 def train_ranker(model: Ranker, recipes, index, sub_lookup, cfg, columns=FEATURE_NAMES):

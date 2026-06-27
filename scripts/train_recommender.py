@@ -1,0 +1,96 @@
+"""Train recommender artifacts on the processed corpus.
+
+    uv run python scripts/train_recommender.py
+
+Reads the processed recipe corpus, trains the Phase 3 reranker once, validates
+the persisted artifact, and saves one recommender bundle to models/recommender/.
+"""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+from datetime import UTC, datetime
+from pathlib import Path
+
+from pantrychef.common import get_logger
+from pantrychef.config import get_settings
+from pantrychef.data.store import load_recipes
+from pantrychef.recommender.bundle import DEFAULT_BUNDLE_NAME
+from pantrychef.recommender.config import RecConfig
+from pantrychef.recommender.sub_lookup import load_sub_lookup
+from pantrychef.recommender.train import train_bundle
+from pantrychef.retrieval.index import InvertedIndex
+
+log = get_logger(__name__)
+
+
+def _git_commit() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+    return result.stdout.strip() or None
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--max-rows", type=int, default=None, help="cap corpus size for fast dev")
+    ap.add_argument("--mask-fraction", type=float, default=0.3)
+    ap.add_argument("--seed", type=int, default=13)
+    ap.add_argument("--no-subs", action="store_true", help="skip Phase-2 sub_fill features")
+    ap.add_argument(
+        "--max-train-queries", type=int, default=None, help="cap attempted train queries"
+    )
+    ap.add_argument("--output", default=None, help="override recommender bundle path")
+    args = ap.parse_args(argv)
+
+    s = get_settings()
+    recipes_path = s.processed_dir / "recipes.jsonl"
+    if not recipes_path.exists():
+        log.error("Missing %s. Run `make data` first.", recipes_path)
+        return 1
+
+    recipes = load_recipes(recipes_path, limit=args.max_rows)
+    index = InvertedIndex.build(recipes)
+    cfg = RecConfig(
+        mask_fraction=args.mask_fraction,
+        seed=args.seed,
+        max_train_queries=args.max_train_queries,
+    )
+    sub_lookup = None if args.no_subs else load_sub_lookup(cfg)
+    bundle, stats = train_bundle(
+        recipes,
+        index,
+        sub_lookup,
+        cfg,
+        use_lambdamart=True,
+        metadata={
+            "trained_at": datetime.now(UTC).isoformat(),
+            "git_commit": _git_commit(),
+        },
+    )
+    bundle.metadata["train_stats"] = stats
+
+    out = Path(args.output) if args.output else (s.models_dir / "recommender" / DEFAULT_BUNDLE_NAME)
+    bundle.save(out)
+    restored = bundle.load(out)
+    if set(restored.models) != set(bundle.models):
+        log.error(
+            "Artifact integrity check failed: restored models %s != %s",
+            restored.models,
+            bundle.models,
+        )
+        return 1
+    log.info("Saved recommender bundle to %s", out)
+    log.info("Training stats: %s", stats)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
