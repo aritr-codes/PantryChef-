@@ -79,6 +79,8 @@ _CURATED: dict[str, set[str]] = {
     "almond flour": set(),
     "coconut flour": set(),
     "rice flour": set(),
+    "olive oil": set(),
+    "tofu": set(),
     "eggplant": set(),
 }
 
@@ -131,16 +133,16 @@ class DietTagger:
     def _is_known(self, ingredient: str) -> bool:
         """Return True if the ingredient is in the vocab, curated table, or has leaf-token tags."""
         ing = canonicalize(ingredient)
-        if ing in self._known or ing in _CURATED:
+        if ing in _CURATED:
             return True
-        # Known if any token maps to a leaf word
         return any(w in _LEAF_WORDS for w in ing.split())
 
     def is_valid(self, ingredient: str, diet: str | None) -> bool:
         """Return True if *ingredient* is allowed under *diet*.
 
-        Unknown ingredients are conservatively excluded when a constrained diet
-        is specified, since we cannot assert they are safe.
+        Ingredients without an explicit dietary judgment are conservatively
+        excluded when a constrained diet is specified, since we cannot assert
+        they are safe.
         """
         if not diet:
             return True
