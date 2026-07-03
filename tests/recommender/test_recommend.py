@@ -51,18 +51,15 @@ def test_candidate_pool_overlap_ordered():
     assert ids[0] == "a"  # full coverage (3/3) ranks above b (1/2)
 
 
-
 def test_candidate_pool_respects_cap():
     idx = _idx()
     pool = candidate_pool(idx, {"egg"}, cap=1)
     assert len(pool) == 1
 
 
-
 def test_candidate_pool_cap_zero_returns_empty():
     idx = _idx()
     assert candidate_pool(idx, {"egg"}, cap=0) == []
-
 
 
 def test_candidate_pool_negative_cap_matches_reference():
@@ -71,11 +68,9 @@ def test_candidate_pool_negative_cap_matches_reference():
     assert got == _ref_pool(idx, {"egg", "flour", "milk"}, -1)
 
 
-
 def test_candidate_pool_empty_pantry_returns_empty():
     idx = _idx()
     assert candidate_pool(idx, set(), cap=10) == []
-
 
 
 def test_candidate_pool_handles_empty_posting_lists():
@@ -86,13 +81,11 @@ def test_candidate_pool_handles_empty_posting_lists():
     assert got == _ref_pool(idx, {"egg", "ghost"}, 10)
 
 
-
 def test_candidate_pool_duplicate_pantry_entries_match_reference_if_passed():
     idx = _idx()
     pantry = ["egg", "egg", "flour"]
     got = _ids(candidate_pool(idx, pantry, cap=10))
     assert got == _ref_pool(idx, pantry, 10)
-
 
 
 def test_candidate_pool_repeated_calls_same_query_with_workspace():
@@ -104,7 +97,6 @@ def test_candidate_pool_repeated_calls_same_query_with_workspace():
         assert _ids(candidate_pool(idx, pantry, cap=10, workspace=workspace)) == expected
 
 
-
 def test_candidate_pool_repeated_calls_different_queries_with_workspace():
     idx = _idx()
     workspace = CandidatePoolWorkspace(idx.n)
@@ -113,7 +105,6 @@ def test_candidate_pool_repeated_calls_different_queries_with_workspace():
         assert _ids(candidate_pool(idx, pantry, cap=10, workspace=workspace)) == _ref_pool(
             idx, pantry, 10
         )
-
 
 
 def test_rerank_uses_model_scores():
@@ -134,7 +125,6 @@ def test_rerank_uses_model_scores():
     assert ranked[0].missing  # b is missing sugar
 
 
-
 def test_rerank_empty_pantry_returns_empty():
     idx = _idx()
 
@@ -144,7 +134,6 @@ def test_rerank_empty_pantry_returns_empty():
 
     out = rerank(idx, set(), FakeModel(), lambda p, r: {}, k=5, cap=10)
     assert out == []
-
 
 
 def test_candidate_pool_tiebreak_fewer_missing():
@@ -161,7 +150,6 @@ def test_candidate_pool_tiebreak_fewer_missing():
     assert [r.recipe_id for r in pool] == ["small", "big"]
 
 
-
 def test_candidate_pool_equal_coverage_fewer_missing_first():
     # Equal coverage (1/2 each), different missing counts is impossible at equal len;
     # construct equal coverage with equal len, tie-break falls to recipe_id.
@@ -172,7 +160,6 @@ def test_candidate_pool_equal_coverage_fewer_missing_first():
     idx = InvertedIndex.build(recipes)
     pool = candidate_pool(idx, {"egg"}, cap=10)
     assert [r.recipe_id for r in pool] == ["a", "b"]  # recipe_id tie-break
-
 
 
 def test_candidate_pool_matches_reference_randomized():

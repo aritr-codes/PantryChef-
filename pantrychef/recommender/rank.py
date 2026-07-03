@@ -58,7 +58,6 @@ class LinearRanker:
             raise RuntimeError("LinearRanker not fitted")
         return self._standardize(X) @ self.w_ + self.b_
 
-
     def to_state(self) -> dict[str, Any]:
         """Return the fitted linear model state for artifact persistence."""
         if self.w_ is None or self.mean_ is None or self.std_ is None:
@@ -86,6 +85,7 @@ class LinearRanker:
         model.mean_ = np.asarray(state["mean"], dtype=float)
         model.std_ = np.asarray(state["std"], dtype=float)
         return model
+
 
 class LambdaMARTRanker:
     """LightGBM LambdaMART (objective='lambdarank'). Lazy import keeps core clean."""
@@ -134,7 +134,6 @@ class LambdaMARTRanker:
             raise RuntimeError("LambdaMARTRanker not fitted")
         return np.asarray(self._model.predict(X))
 
-
     def to_state(self) -> dict[str, Any]:
         """Return the fitted LambdaMART state for artifact persistence."""
         if self._model is None:
@@ -166,4 +165,3 @@ class LambdaMARTRanker:
         )
         model._model = lgb.Booster(model_str=str(state["booster"]))
         return model
-

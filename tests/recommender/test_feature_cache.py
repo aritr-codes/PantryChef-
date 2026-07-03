@@ -236,4 +236,3 @@ def test_train_bundle_lambdamart_matches_build_examples_reference() -> None:
         bundle.models["lambdamart-nosub"].model.score(X_nosub),
         reference_nosub.score(X_nosub),
     )
-

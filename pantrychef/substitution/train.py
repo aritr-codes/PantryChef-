@@ -39,9 +39,7 @@ class Artifacts:
     ) -> Substitutor:
         """Wire trained artifacts + dietary tagger into a ready Substitutor."""
         vocab = (
-            list(known_vocab)
-            if known_vocab is not None
-            else list(self.vocab or self.graph.vocab)
+            list(known_vocab) if known_vocab is not None else list(self.vocab or self.graph.vocab)
         )
         return Substitutor(
             emb=self.embeddings,

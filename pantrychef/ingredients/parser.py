@@ -38,6 +38,7 @@ def _entry_meta(entry: str) -> tuple[tuple[str, ...], tuple[tuple[str, int], ...
     words = tuple(entry.split())
     return words, tuple(Counter(words).items()), len(entry)
 
+
 # Rarest token -> vocab entries for which that word is the least-frequent token.
 MatchIndex = dict[str, list[str]]
 

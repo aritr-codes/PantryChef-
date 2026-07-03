@@ -79,9 +79,7 @@ class EmbeddingModel:
         if arr.ndim != 2 or arr.shape[0] == 0:
             raise ValueError("vectors must be a non-empty 2D array")
         if len(vocab) != arr.shape[0]:
-            raise ValueError(
-                f"vocab and vectors must align: {len(vocab)} != {arr.shape[0]}"
-            )
+            raise ValueError(f"vocab and vectors must align: {len(vocab)} != {arr.shape[0]}")
         wv = KeyedVectors(vector_size=int(arr.shape[1]))
         wv.add_vectors(list(vocab), arr)
         return cls(wv)
