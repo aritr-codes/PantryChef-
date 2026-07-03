@@ -15,7 +15,7 @@ from pantrychef.common import get_logger
 from pantrychef.common.types import Recipe
 from pantrychef.recommender.config import RecConfig
 from pantrychef.recommender.features import FEATURE_NAMES, SubLookup, extract_features
-from pantrychef.recommender.query_sim import is_train, make_query
+from pantrychef.recommender.query_sim import is_train, make_query, sample_order
 from pantrychef.recommender.recommend import _Scorer, candidate_pool, rerank
 from pantrychef.retrieval.index import InvertedIndex
 
@@ -56,6 +56,9 @@ def build_eval_queries(
     out: list[EvalQuery] = []
     n = 0
     cap = cfg.max_eval_queries
+    if cap is not None:
+        # capped eval samples recipes in seed-hash order, not corpus file order
+        recipes = sample_order(list(recipes), cfg.seed + 1)
     for recipe in recipes:
         if cap is not None and n >= cap:
             break
@@ -135,4 +138,3 @@ def evaluate(
     """
     queries = build_eval_queries(recipes, index, cfg, test_only)
     return score_queries(model, queries, index, sub_lookup, k, columns)
-

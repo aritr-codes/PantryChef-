@@ -10,6 +10,10 @@ from datetime import UTC, datetime
 from time import perf_counter, process_time
 from typing import Protocol
 
+from pantrychef.common import get_logger
+
+log = get_logger(__name__)
+
 
 @dataclasses.dataclass(frozen=True)
 class ExampleProgress:
@@ -147,6 +151,36 @@ class BenchmarkRecorder:
         )
 
 
+class ConsoleObserver:
+    """TrainObserver that records into a BenchmarkRecorder and logs progress."""
+
+    def __init__(self, recorder: BenchmarkRecorder) -> None:
+        self.recorder = recorder
+        self._last_logged_progress: tuple[int, int] | None = None
+
+    def record_stage(self, key: str, label: str, seconds: float) -> None:
+        self.recorder.record_stage(key, label, seconds)
+
+    def record_examples_progress(self, progress: ExampleProgress) -> None:
+        self.recorder.record_examples_progress(progress)
+        current = (progress.recipes_processed, progress.queries_total)
+        if current == self._last_logged_progress:
+            return
+        self._last_logged_progress = current
+        pct = 0.0
+        if progress.recipes_total > 0:
+            pct = progress.recipes_processed / progress.recipes_total * 100.0
+        msg = (
+            f"Generate examples: {progress.recipes_processed}/{progress.recipes_total} "
+            f"recipes ({pct:.1f}%), {progress.queries_total} queries, "
+            f"{progress.queries_kept} kept"
+        )
+        if progress.elapsed_seconds > 0:
+            msg += f", {progress.queries_total / progress.elapsed_seconds:.1f} queries/s"
+            msg += f", {progress.candidates_total / progress.elapsed_seconds:.1f} candidates/s"
+        log.info(msg)
+
+
 def render_summary(result: BenchmarkResult) -> str:
     total = result.total_seconds
     stage_width = max([len("Stage"), *(len(stage.label) for stage in result.stage_timings)])
@@ -170,4 +204,3 @@ def render_summary(result: BenchmarkResult) -> str:
     if result.throughput.candidates_per_sec is not None:
         lines.append(f"Candidates/sec: {result.throughput.candidates_per_sec:.1f}")
     return "\n".join(lines)
-

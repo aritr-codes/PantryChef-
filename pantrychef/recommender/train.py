@@ -26,7 +26,7 @@ from pantrychef.recommender.features import (
     extract_feature_row,
     extract_features,
 )
-from pantrychef.recommender.query_sim import is_train, make_query
+from pantrychef.recommender.query_sim import is_train, make_query, sample_order
 from pantrychef.recommender.rank import LambdaMARTRanker, LinearRanker, Ranker
 from pantrychef.recommender.recommend import CandidatePoolWorkspace, candidate_pool
 from pantrychef.retrieval.index import InvertedIndex
@@ -45,14 +45,16 @@ def _matrix_from_rows(
     flat_values: array,
     row_count: int,
     columns: tuple[str, ...] | list[str] = FEATURE_NAMES,
+    buffer_columns: tuple[str, ...] | list[str] = FEATURE_NAMES,
 ) -> np.ndarray:
     columns_tuple = tuple(columns)
+    buffer_tuple = tuple(buffer_columns)
     if row_count == 0:
         return np.empty((0, len(columns_tuple)), dtype=float)
-    x_full = np.frombuffer(flat_values, dtype=np.float64).reshape(row_count, len(FEATURE_NAMES))
-    if columns_tuple == FEATURE_NAMES:
-        return x_full
-    return x_full[:, _column_indices(columns_tuple)]
+    x_buf = np.frombuffer(flat_values, dtype=np.float64).reshape(row_count, len(buffer_tuple))
+    if columns_tuple == buffer_tuple:
+        return x_buf
+    return x_buf[:, tuple(buffer_tuple.index(c) for c in columns_tuple)]
 
 
 def _maybe_report_progress(
@@ -106,6 +108,9 @@ def _collect_training_examples(
     pool_workspace = CandidatePoolWorkspace(index.n)
 
     cap = cfg.max_train_queries
+    if cap is not None:
+        # capped runs sample recipes in seed-hash order, not corpus file order
+        recipes = sample_order(recipes, cfg.seed)
     for recipe in recipes:
         recipes_processed += 1
         if cap is not None and n_total >= cap:
@@ -180,20 +185,23 @@ def _build_numeric_rows(
     cfg: RecConfig,
     train_only: bool = True,
     observer: TrainObserver | None = None,
-) -> tuple[array, list[int], list[int], dict[str, int]]:
+    columns: tuple[str, ...] = FEATURE_NAMES,
+) -> tuple[array, array, list[int], dict[str, int]]:
+    # buffering only `columns` keeps the flat buffer at len(columns)/8 of the
+    # all-features footprint on column-subset (production no-sub) builds
+    indices = None if tuple(columns) == FEATURE_NAMES else _column_indices(columns)
     flat_values = array("d")
-    labels: list[int] = []
+    labels = array("b")
 
     def on_group(pantry: set[str], pool: list[Recipe], gold_id: str) -> None:
         for recipe in pool:
-            flat_values.extend(
-                extract_feature_row(
-                    pantry,
-                    recipe,
-                    sub_lookup,
-                    canon=index.canon_sets[recipe.recipe_id],
-                )
+            row = extract_feature_row(
+                pantry,
+                recipe,
+                sub_lookup,
+                canon=index.canon_sets[recipe.recipe_id],
             )
+            flat_values.extend(row if indices is None else [row[i] for i in indices])
             labels.append(1 if recipe.recipe_id == gold_id else 0)
 
     groups, stats = _collect_training_examples(
@@ -264,6 +272,7 @@ def build_dataset(
     observer: TrainObserver | None = None,
 ) -> tuple[np.ndarray, np.ndarray, list[int], dict[str, int]]:
     """(X, y, group_sizes, stats) over masked queries in fixed column order."""
+    columns_tuple = tuple(columns)
     flat_values, labels, groups, stats = _build_numeric_rows(
         recipes,
         index,
@@ -271,9 +280,10 @@ def build_dataset(
         cfg,
         train_only,
         observer=observer,
+        columns=columns_tuple,
     )
     return (
-        _matrix_from_rows(flat_values, len(labels), columns),
+        _matrix_from_rows(flat_values, len(labels), columns_tuple, buffer_columns=columns_tuple),
         np.array(labels, dtype=int),
         groups,
         stats,
@@ -384,6 +394,7 @@ def train_production_bundle(
         cfg,
         train_only=True,
         observer=observer,
+        columns=NO_SUB_COLUMNS,
     )
     if observer is not None:
         observer.record_stage("generate_examples", "Generate examples", perf_counter() - started)
@@ -391,7 +402,9 @@ def train_production_bundle(
         raise ValueError("build_examples produced 0 training groups; check corpus/config")
     y = np.array(labels, dtype=int)
     started = perf_counter()
-    x_nosub = _matrix_from_rows(flat_values, len(labels), NO_SUB_COLUMNS)
+    x_nosub = _matrix_from_rows(
+        flat_values, len(labels), NO_SUB_COLUMNS, buffer_columns=NO_SUB_COLUMNS
+    )
     if observer is not None:
         observer.record_stage(
             "build_matrix_nosub",
@@ -432,12 +445,8 @@ def train_ranker(
     observer: TrainObserver | None = None,
 ):
     """Build the dataset and fit `model` in place; returns (model, stats)."""
-    X, y, groups, stats = build_dataset(
-        recipes, index, sub_lookup, cfg, columns, observer=observer
-    )
+    X, y, groups, stats = build_dataset(recipes, index, sub_lookup, cfg, columns, observer=observer)
     if not groups:
         raise ValueError("build_dataset produced 0 training groups; check corpus/config")
     model.fit(X, y, groups)
     return model, stats
-
-

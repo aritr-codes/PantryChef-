@@ -25,7 +25,7 @@ from pantrychef.config import get_settings
 from pantrychef.data.store import load_recipes
 from pantrychef.recommender.benchmark import (
     BenchmarkRecorder,
-    ExampleProgress,
+    ConsoleObserver,
     TrainObserver,
     render_summary,
 )
@@ -36,34 +36,6 @@ from pantrychef.recommender.train import train_bundle, train_production_bundle
 from pantrychef.retrieval.index import InvertedIndex
 
 log = get_logger(__name__)
-
-
-class _ConsoleObserver:
-    def __init__(self, recorder: BenchmarkRecorder) -> None:
-        self.recorder = recorder
-        self._last_logged_progress: tuple[int, int] | None = None
-
-    def record_stage(self, key: str, label: str, seconds: float) -> None:
-        self.recorder.record_stage(key, label, seconds)
-
-    def record_examples_progress(self, progress: ExampleProgress) -> None:
-        self.recorder.record_examples_progress(progress)
-        current = (progress.recipes_processed, progress.queries_total)
-        if current == self._last_logged_progress:
-            return
-        self._last_logged_progress = current
-        pct = 0.0
-        if progress.recipes_total > 0:
-            pct = progress.recipes_processed / progress.recipes_total * 100.0
-        msg = (
-            f"Generate examples: {progress.recipes_processed}/{progress.recipes_total} "
-            f"recipes ({pct:.1f}%), {progress.queries_total} queries, "
-            f"{progress.queries_kept} kept"
-        )
-        if progress.elapsed_seconds > 0:
-            msg += f", {progress.queries_total / progress.elapsed_seconds:.1f} queries/s"
-            msg += f", {progress.candidates_total / progress.elapsed_seconds:.1f} candidates/s"
-        log.info(msg)
 
 
 def _git_commit() -> str | None:
@@ -121,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
             "mode": "experimental-ablation" if args.experimental_subs else "production",
         },
     )
-    observer: TrainObserver = _ConsoleObserver(recorder)
+    observer: TrainObserver = ConsoleObserver(recorder)
 
     with recorder.stage("load_recipes", "Load recipes"):
         recipes = load_recipes(recipes_path, limit=args.max_rows)
