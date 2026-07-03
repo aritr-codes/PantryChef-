@@ -22,3 +22,9 @@ def test_known_cases_preserved():
     t = _t()
     assert "dairy" in t.tags("milk")
     assert t.is_valid("olive oil", "vegan") is True
+
+
+def test_known_but_untagged_is_conservatively_excluded():
+    t = DietTagger(known=["sumac"])
+    assert t.is_valid("sumac", "vegan") is False
+    assert t.coverage(["sumac"]) == 0.0

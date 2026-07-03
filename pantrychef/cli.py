@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import replace
 from pathlib import Path
+from zipfile import BadZipFile
 
 from pantrychef import __version__
 from pantrychef.config import get_settings
@@ -45,34 +47,22 @@ def substitute_command(
     model_path: str | None = None,
     recipe: str | None = None,
 ) -> int:
-    """Find ingredient substitutes using the trained embedding model."""
-    from pantrychef.ingredients.vocab import load_vocabulary
-    from pantrychef.substitution.config import SubConfig
-    from pantrychef.substitution.cooccur import build_cooccurrence, sppmi
-    from pantrychef.substitution.dietary import DietTagger
-    from pantrychef.substitution.embeddings import EmbeddingModel
-    from pantrychef.substitution.graph import ContextGraph
-    from pantrychef.substitution.substitute import Substitutor
+    """Find ingredient substitutes using the persisted substitution bundle."""
+    from pantrychef.substitution.bundle import DEFAULT_BUNDLE_NAME
+    from pantrychef.substitution.train import Artifacts
 
     s = get_settings()
-    mpath = Path(model_path or (s.models_dir / "substitution" / "word2vec.kv"))
+    mpath = Path(model_path or (s.models_dir / "substitution" / DEFAULT_BUNDLE_NAME))
     if not mpath.exists():
-        print(f"Substitution model not found at {mpath}. Run scripts/train_substitution.py first.")
+        print(f"Substitution bundle not found at {mpath}. Run scripts/train_substitution.py first.")
         return 1
-    recipes_path = s.processed_dir / "recipes.jsonl"
-    vocab = load_vocabulary(s.processed_dir / "vocab.json")
-    emb = EmbeddingModel.load(mpath)
-    recipes = load_recipes(recipes_path)
-    cmat, _, _, _ = build_cooccurrence(recipes, vocab)
-    cfg = SubConfig(k=k)
-    graph = ContextGraph(
-        sppmi(cmat, cfg.sppmi_shift),
-        vocab,
-        cmat,
-        lam=cfg.lam,
-        overlap_shrink=cfg.overlap_shrink,
-    )
-    sub = Substitutor(emb=emb, graph=graph, tagger=DietTagger(known=vocab), cfg=cfg)
+    try:
+        art = Artifacts.load_bundle(mpath)
+    except (BadZipFile, OSError, ValueError) as exc:
+        print(f"Failed to load substitution bundle at {mpath}: {exc}")
+        return 1
+
+    sub = art.substitutor(cfg=replace(art.cfg, k=k))
     ctx = [c.strip() for c in recipe.split(",") if c.strip()] if recipe else None
     results = sub.substitutes(ingredient, diet=diet, recipe=ctx, k=max(k, 0))
     if not results:
@@ -102,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
     sub_p.add_argument(
         "--in-recipe", dest="recipe", default=None, help="Comma-separated recipe context."
     )
-    sub_p.add_argument("--model", default=None, help="Path to word2vec.kv.")
+    sub_p.add_argument("--model", default=None, help="Path to substitution bundle.")
 
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 

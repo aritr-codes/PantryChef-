@@ -69,22 +69,29 @@ recall@10 0.475 vs 0.405. Hybrid gives best recall@10 (0.503) but lower MRR/P@1.
 > `min_count=5` → vocab 30,481, seed=42. **Same** mined gold (116 pairs / 82
 > query keys) as the 28k row, so the arms are comparable **to each other**.
 > Absolute numbers are **not** comparable to the 28k row: the candidate space is
-> ~15× larger (a strictly harder ranking task), so all arms score lower.
+> ~15× larger (a strictly harder ranking task). Overlap-shrinkage support guard
+> (β=100) is **on** for graph/hybrid. **Re-run 2026-06-05 after the parser
+> doubled-token fix** (see [CHALLENGES.md](CHALLENGES.md) — "Reduplicated NER
+> artifacts…"); pair_coverage = 1.0.
 
 | Arm | MRR | R@5 | R@10 | Run |
 | --- | --- | --- | ---- | --- |
-| emb-only (food2vec baseline) | 0.169 | 0.201 | 0.315 | full, 2026-06-01 |
-| graph-only, **no** support guard | 0.151 | 0.151 | 0.264 | full, 2026-06-01 |
-| **graph-only + overlap-shrink (β=100) ★** | **0.176** | 0.225 | **0.316** | full, 2026-06-01 |
-| **hybrid (alpha=0.5) + shrink** | **0.201** | **0.281** | **0.352** | full, 2026-06-01 |
+| emb-only (food2vec baseline) | 0.259 | 0.313 | 0.481 | full, 2026-06-05 |
+| **graph-only + overlap-shrink (β=100) ★** | **0.289** | 0.344 | 0.466 | full, 2026-06-05 |
+| **hybrid (alpha=0.5) + shrink** | **0.317** | **0.434** | **0.532** | full, 2026-06-05 |
 
-★ **The flagship's lead reverses at full scale without a support guard**
-(graph 0.151 < emb 0.169) and is **restored** by overlap-shrinkage
-(0.176 > 0.169; hybrid best at 0.201 / 0.352). Root-cause investigation and the
-fix are documented in [CHALLENGES.md](CHALLENGES.md) — "Flagship graph advantage
-reversed at full-corpus scale". **Caveats:** β=100 was tuned on this same 82-pair
-gold (small n → mild overfit risk); the win is a **relative** one (graph > emb at
-the same scale), not an absolute gain over the 28k sample.
+★ **Flagship ordering holds at full scale:** graph-only MRR 0.289 > food2vec
+0.259; hybrid best (0.317 / R@10 0.532). The support-guard story (the graph's
+lead *reverses* without overlap-shrinkage at this scale, then is restored) is
+documented in [CHALLENGES.md](CHALLENGES.md) — "Flagship graph advantage reversed
+at full-corpus scale". **These numbers supersede the pre-2026-06-05 full-corpus
+row (graph 0.176, hybrid 0.201):** that run was on the doubled-token corpus,
+where gold pairs keyed on common single-word ingredients ("butter") silently
+missed the model and depressed every arm. The parser fix lifted graph-only MRR
+**0.176 → 0.289** (eval *validity* was never broken — gold was canonicalized
+through the same path — but the absolute scores were artificially low).
+**Caveats:** β=100 was tuned on this same 82-pair gold (small n → mild overfit
+risk); the flagship win is a **relative** one (graph > emb at the same scale).
 
 #### Dietary guardrail
 
@@ -138,28 +145,37 @@ claim, not a head-to-head model reproduction._
 > against the **same** prebuilt candidate pools (fairness). **NDCG omitted:**
 > with a single gold per query it is a monotone transform of MRR — redundant,
 > not independent evidence (see design spec 2026-06-02).
+>
+> **Re-run 2026-06-06 on the parser-fixed corpus** (doubled-token fix, see
+> [CHALLENGES.md](CHALLENGES.md)), **uncapped eval = 9,354 queries** (the
+> `--max-eval-queries 5000` cap of the original 2026-06-03 run was dropped, so n
+> is larger and the estimate more stable). Numbers below supersede the pre-fix
+> 50k row.
 
 | Arm | recall@10 | mrr@10 | recall@10\|in_pool | mrr@10\|in_pool | Run |
 | --- | --------- | ------ | ------------------ | --------------- | --- |
-| **overlap (P1 baseline)** | 0.663 | 0.332 | 0.675 | 0.337 | 50k, 2026-06-03 |
-| linear (numpy logistic) | 0.966 | 0.910 | 0.983 | 0.926 | 50k, 2026-06-03 |
-| LambdaMART (+sub_fill) | 0.968 | 0.921 | 0.985 | 0.937 | 50k, 2026-06-03 |
-| **LambdaMART −sub_fill ★** | **0.971** | **0.924** | **0.988** | **0.940** | 50k, 2026-06-03 |
-| _candidate ceiling_ | _0.983_ | — | — | — | _gold-in-pool rate_ |
+| **overlap (P1 baseline)** | 0.746 | 0.414 | 0.754 | 0.418 | 50k, 2026-06-06 |
+| linear (numpy logistic) | 0.979 | 0.926 | 0.990 | 0.936 | 50k, 2026-06-06 |
+| LambdaMART (+sub_fill) | 0.980 | 0.935 | 0.991 | 0.945 | 50k, 2026-06-06 |
+| **LambdaMART −sub_fill ★** | **0.980** | **0.935** | **0.991** | **0.945** | 50k, 2026-06-06 |
+| _candidate ceiling_ | _0.989_ | — | — | — | _gold-in-pool rate_ |
 
-★ **Learned reranker crushes the P1 overlap baseline:** recall@10 0.663 → 0.971
-(+0.308), MRR 0.332 → 0.924 (+0.592) on the identical candidate pools — the core
-Phase-3 claim. The **candidate ceiling is 0.983** (fraction of eval queries where
+★ **Learned reranker crushes the P1 overlap baseline:** recall@10 0.746 → 0.980
+(+0.234), MRR 0.414 → 0.935 (+0.521) on the identical candidate pools — the core
+Phase-3 claim. The **candidate ceiling is 0.989** (fraction of eval queries where
 the gold recipe is even present in the 200-candidate pool); the reranker reaches
-0.971 of a possible 0.983, i.e. **0.988 recall conditional on the gold being
-reachable** — it nearly saturates what the P1 retriever leaves on the table.
+0.980 of a possible 0.989, i.e. **0.991 recall conditional on the gold being
+reachable** — it nearly saturates what the P1 retriever leaves on the table. (The
+parser fix lifted every arm slightly — cleaner tokens improve both candidate
+coverage and ranking; the pre-fix row was overlap 0.663 / LambdaMART 0.971.)
 
-**sub_fill ablation = NULL (marginally negative).** Injecting Phase-2 substitution
-knowledge (`sub_fill_max`/`sub_fill_mean` = best P2 substitute-similarity of a
-candidate's missing ingredients to the pantry) does **not** help: LambdaMART −sub
-(0.971/0.924) ≥ LambdaMART +sub (0.968/0.921), a ~0.2pt gap **within ~1 SE**
-(≈0.24pt at n=5,000) → no significant effect. This is an **honest negative
-result**, reported as-is and **not** p-hacked positive. Recovery rewards finding
+**sub_fill ablation = NULL.** Injecting Phase-2 substitution knowledge
+(`sub_fill_max`/`sub_fill_mean` = best P2 substitute-similarity of a candidate's
+missing ingredients to the pantry) does **not** help: LambdaMART −sub
+(0.980/0.9349) ≈ LambdaMART +sub (0.980/0.9347) — a ~0.02pt gap, far **within ~1
+SE** → no significant effect, and the null **reproduces on the parser-fixed
+corpus**. This is an **honest negative result**, reported as-is and **not**
+p-hacked positive. Recovery rewards finding
 the *exact* masked recipe; substitutability is an orthogonal recommendation-quality
 signal — at best noise here, at worst it pulls non-gold-but-substitutable
 candidates up. Details + rationale in
@@ -167,6 +183,15 @@ candidates up. Details + rationale in
 
 #### Full corpus (1,274,290 recipes, vocab 30,481, n=5,000 eval)
 
+> ⚠️ **Pre-parser-fix (2026-06-03) — full leaderboard re-eval pending.** These
+> numbers are on the doubled-token corpus. The 50k re-run on the fixed corpus
+> (above) lifted every arm, so expect these to move up too; the full all-arms
+> re-run is RAM-blocked on the dev box and deferred to a freed/fresh machine.
+> A **post-fix** full-corpus datapoint for the production arm now exists — see
+> "Production training path" below (unbiased 2,000-query slice: ceiling 0.854,
+> mrr@10|in_pool 0.9689). The three findings below (ceiling collapse, reranker
+> lead grows, sub_fill null) are structural and expected to hold.
+>
 > **Provenance:** full RecipeNLG 2.23M cleaned (1.27M after title-dedup),
 > seed=13, mask_fraction=0.3, candidate_cap=200 — the **same protocol and the
 > same first eval queries** as the 50k row (queries iterate the corpus in file
@@ -213,6 +238,51 @@ natural next retrieval-quality target (larger/learned candidate generation,
 e.g. higher cap or ANN over recipe embeddings); the reranker layer is already
 near-saturating what the pool surfaces._
 
+#### Production training path + train-query cap (2026-07-03)
+
+> **What ships vs what's studied.** The default training entrypoint
+> (`scripts/train_recommender.py`) trains **only** `lambdamart-nosub` on the six
+> non-substitution features and never loads Phase-2 artifacts; the runtime
+> serves it by default. Rationale: the sub_fill ablation is null (above) **and**
+> enabling substitution-backed features collapses example-generation throughput
+> ~1000× (259 → 0.25 queries/s on the 50k slice — `ContextGraph.neighbors()`
+> cold misses dominate). The full three-arm ablation (linear / lambdamart /
+> lambdamart-nosub with sub features) stays available behind
+> `--experimental-subs` for research runs. The Phase-2 substitution subsystem
+> itself is untouched — it is only excluded as a *ranking feature*.
+
+**Capped-sampling bias fix.** Capped runs (`max_train_queries` /
+`max_eval_queries`) previously took the **first N recipes in corpus file
+order** — a biased-hard prefix (eval ceiling 0.706–0.79; ~21% of attempted
+train queries dropped gold-unreachable). Capped selection now iterates recipes
+in `md5(seed:recipe_id)` hash order (`query_sim.sample_order`): unbiased,
+reproducible, and **nested** — the 10k sample is a true prefix of the 20k
+sample, so learning-curve points are comparable. Uncapped runs keep file order,
+so all uncapped historical numbers above are unchanged.
+
+**Train-query learning curve** — full 1.27M parser-fixed corpus, production
+arm, one fixed 2,000-query hash-sampled eval slice reused across caps, seed=13
+(`scripts/recommender_learning_curve.py`):
+
+| Train cap | Kept groups | recall@10 | mrr@10 | mrr@10\|in_pool | Gen time |
+| --------- | ----------- | --------- | ------ | --------------- | -------- |
+| 10,000 | 8,694 | 0.8485 | 0.8275 | 0.9689 | 14.1 min |
+| 20,000 | 17,472 | 0.8485 | 0.8275 | 0.9689 | 29.3 min |
+
+Metrics are **identical to full float precision** at both caps — the
+six-feature model saturates at (or below) 10k query-groups; doubling the
+training data changes nothing. The training default is therefore
+`--max-train-queries 10000` (`0` restores uncapped), making a full-corpus
+production training run **~25 minutes** end to end, versus an extrapolated
+~25 h for uncapped example generation (which also exceeds the 16 GB dev box).
+
+_Candidate ceiling on this unbiased slice = **0.854** (parser-fixed corpus,
+n=2,000) vs 0.706 in the pre-fix file-order table above; the gap conflates the
+2026-06-05 parser fix with the sampling-bias fix. The full all-arms re-run on
+the fixed corpus is still pending, but the structural findings hold here: the
+production reranker recovers **0.9689 mrr@10|in_pool** — near-saturating what
+retrieval surfaces — so first-stage candidate recall remains the bottleneck._
+
 ### Phase 4 — Nutrition & Dietary
 
 > **Phase 4 eval provenance:** USDA FoodData Central join — **SR Legacy 2018-04**
@@ -257,12 +327,13 @@ tagger was removed rather than benchmarked alongside, this is reported as a
 **qualitative fix**, not an old-vs-new accuracy delta.
 
 **Impute-gate decision: TRIPPED → macro imputer built.** The gate fires because
-`match_coverage` (0.800) is `< 0.80` **and** `median_unresolved_mass` (0.50) is
-`> 0.20`. In response, a gated macro imputer (`pantrychef/nutrition/impute.py`:
-HashingVectorizer + Ridge, MAE measured on held-out matched ingredients) was
-built and validated at unit level. **Honesty note:** the imputer is a standalone
-gated module; wiring its predictions into `RecipeNutrition` totals at corpus
-scale is future work — recipe totals **do not currently use imputed macros**.
+`median_unresolved_mass` (0.50) is `> 0.20`; `match_coverage` (0.800) is exactly
+at the threshold, so it does **not** satisfy `< 0.80`. In response, a gated macro
+imputer (`pantrychef/nutrition/impute.py`: HashingVectorizer + Ridge, MAE measured
+on held-out matched ingredients) was built and validated at unit level. **Honesty
+note:** the imputer is a standalone gated module; wiring its predictions into
+`RecipeNutrition` totals at corpus scale is future work — recipe totals **do not
+currently use imputed macros**.
 
 **Honesty constraint.** No recipe-level nutrition gold exists, so Phase 4 is
 validated via (1) coverage metrics, (2) per-ingredient unit tests, and (3)

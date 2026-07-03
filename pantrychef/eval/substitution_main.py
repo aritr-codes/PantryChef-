@@ -10,6 +10,7 @@ import argparse
 import dataclasses
 from collections.abc import Sequence
 from pathlib import Path
+from zipfile import BadZipFile
 
 from pantrychef.common import get_logger
 from pantrychef.config import get_settings
@@ -86,36 +87,22 @@ def run_ablation(
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint: load artifacts + gold, run ablation, report metrics."""
-    s = get_settings()
-    from pantrychef.data.store import load_recipes
-    from pantrychef.ingredients.vocab import load_vocabulary
-    from pantrychef.substitution.config import SubConfig
-    from pantrychef.substitution.cooccur import build_cooccurrence, sppmi
-    from pantrychef.substitution.embeddings import EmbeddingModel
-    from pantrychef.substitution.graph import ContextGraph
+    from pantrychef.substitution.bundle import DEFAULT_BUNDLE_NAME
 
+    s = get_settings()
     args = parse_args(argv)
-    model = s.models_dir / "substitution" / "word2vec.kv"
+    model = s.models_dir / "substitution" / DEFAULT_BUNDLE_NAME
     gold_csv = Path(args.gold) if args.gold else (s.data_dir / "eval" / "subs_gold.csv")
     if not model.exists() or not gold_csv.exists():
         log.error("Need %s and %s. Train + fetch gold first.", model, gold_csv)
         return 1
+    try:
+        art = Artifacts.load_bundle(model)
+    except (BadZipFile, OSError, ValueError) as exc:
+        log.error("Failed to load substitution bundle %s: %s", model, exc)
+        return 1
 
-    recipes = load_recipes(s.processed_dir / "recipes.jsonl")
-    vocab = load_vocabulary(s.processed_dir / "vocab.json")
-    cmat, _, _, _ = build_cooccurrence(recipes, vocab)
-    cfg = SubConfig()
-    art = Artifacts(
-        embeddings=EmbeddingModel.load(model),
-        graph=ContextGraph(
-            sppmi(cmat, cfg.sppmi_shift),
-            vocab,
-            cmat,
-            lam=cfg.lam,
-            overlap_shrink=cfg.overlap_shrink,
-        ),
-        cfg=cfg,
-    )
+    vocab = list(art.vocab or art.graph.vocab)
     gold = load_pairs_csv(gold_csv)
 
     cov = coverage_report([(a, b) for a, bs in gold.items() for b in bs], set(vocab))
@@ -125,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
 
     curated = load_curated(s.data_dir / "eval" / "curated_subs.json")
     tagger = DietTagger(known=vocab)
-    rate, n = dietary_validity(art.substitutor(vocab), tagger, [(q, "vegan") for q in curated], k=5)
+    rate, n = dietary_validity(art.substitutor(), tagger, [(q, "vegan") for q in curated], k=5)
     log.info(
         "Dietary-validity (vegan) = %.3f over %d subs; tag-coverage=%.3f",
         rate,
