@@ -361,6 +361,67 @@ def train_bundle(
     return RecommenderBundle(index=index, cfg=cfg, models=models, metadata=bundle_metadata), stats
 
 
+def train_production_bundle(
+    recipes: list[Recipe],
+    index: InvertedIndex,
+    cfg: RecConfig,
+    metadata: dict[str, object] | None = None,
+    observer: TrainObserver | None = None,
+) -> tuple[RecommenderBundle, dict[str, int]]:
+    """Train only the production no-substitution LambdaMART model.
+
+    This is the default production training path: no substitution lookup is
+    consulted, sub_fill columns never reach the model, and the bundle contains
+    a single `lambdamart-nosub` ranker. The full linear/lambdamart/
+    lambdamart-nosub ablation set stays in train_bundle() for evaluation and
+    research use.
+    """
+    started = perf_counter()
+    flat_values, labels, groups, stats = _build_numeric_rows(
+        recipes,
+        index,
+        None,
+        cfg,
+        train_only=True,
+        observer=observer,
+    )
+    if observer is not None:
+        observer.record_stage("generate_examples", "Generate examples", perf_counter() - started)
+    if not groups:
+        raise ValueError("build_examples produced 0 training groups; check corpus/config")
+    y = np.array(labels, dtype=int)
+    started = perf_counter()
+    x_nosub = _matrix_from_rows(flat_values, len(labels), NO_SUB_COLUMNS)
+    if observer is not None:
+        observer.record_stage(
+            "build_matrix_nosub",
+            "Build matrix (no-sub)",
+            perf_counter() - started,
+        )
+    started = perf_counter()
+    lambdamart_nosub = LambdaMARTRanker(seed=cfg.seed).fit(x_nosub, y, groups)
+    if observer is not None:
+        observer.record_stage(
+            "train_lambdamart_nosub",
+            "Train LambdaMART (no-sub)",
+            perf_counter() - started,
+        )
+    models = {
+        "lambdamart-nosub": BundledRanker(
+            name="lambdamart-nosub",
+            kind="lambdamart",
+            columns=NO_SUB_COLUMNS,
+            model=lambdamart_nosub,
+        )
+    }
+    bundle_metadata = {
+        "recipe_count": len(recipes),
+        "corpus_fingerprint": corpus_fingerprint(recipes),
+        **(metadata or {}),
+    }
+    return RecommenderBundle(index=index, cfg=cfg, models=models, metadata=bundle_metadata), stats
+
+
 def train_ranker(
     model: Ranker,
     recipes,
