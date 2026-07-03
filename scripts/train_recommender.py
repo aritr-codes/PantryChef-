@@ -63,7 +63,12 @@ def main(argv: list[str] | None = None) -> int:
         "ablation model set (linear, lambdamart, lambdamart-nosub)",
     )
     ap.add_argument(
-        "--max-train-queries", type=int, default=None, help="cap attempted train queries"
+        "--max-train-queries",
+        type=int,
+        default=10_000,
+        help="cap attempted train queries (hash-sampled, see query_sim.sample_order); "
+        "0 = uncapped. Default set by the 2026-07-03 learning curve: MRR@10 is flat "
+        "from 10k to 20k queries on a 2000-query eval slice of the 1.27M corpus",
     )
     ap.add_argument("--output", default=None, help="override recommender bundle path")
     args = ap.parse_args(argv)
@@ -78,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
     cfg = RecConfig(
         mask_fraction=args.mask_fraction,
         seed=args.seed,
-        max_train_queries=args.max_train_queries,
+        max_train_queries=args.max_train_queries or None,
     )
     recorder = BenchmarkRecorder(
         git_sha=git_sha,
