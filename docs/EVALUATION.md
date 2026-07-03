@@ -183,12 +183,14 @@ candidates up. Details + rationale in
 
 #### Full corpus (1,274,290 recipes, vocab 30,481, n=5,000 eval)
 
-> ⚠️ **Pre-parser-fix (2026-06-03) — re-eval pending.** These numbers are on the
-> doubled-token corpus. The 50k re-run on the fixed corpus (above) lifted every
-> arm, so expect these to move up too; the full re-run is RAM-blocked on the dev
-> box (~2.8 GB resident vs <0.5 GB free) and deferred to a freed/fresh machine.
-> The three findings below (ceiling collapse, reranker lead grows, sub_fill null)
-> are structural and expected to hold.
+> ⚠️ **Pre-parser-fix (2026-06-03) — full leaderboard re-eval pending.** These
+> numbers are on the doubled-token corpus. The 50k re-run on the fixed corpus
+> (above) lifted every arm, so expect these to move up too; the full all-arms
+> re-run is RAM-blocked on the dev box and deferred to a freed/fresh machine.
+> A **post-fix** full-corpus datapoint for the production arm now exists — see
+> "Production training path" below (unbiased 2,000-query slice: ceiling 0.854,
+> mrr@10|in_pool 0.9689). The three findings below (ceiling collapse, reranker
+> lead grows, sub_fill null) are structural and expected to hold.
 >
 > **Provenance:** full RecipeNLG 2.23M cleaned (1.27M after title-dedup),
 > seed=13, mask_fraction=0.3, candidate_cap=200 — the **same protocol and the
@@ -235,6 +237,51 @@ _The exposed bottleneck — first-stage candidate recall (ceiling 0.706) — is 
 natural next retrieval-quality target (larger/learned candidate generation,
 e.g. higher cap or ANN over recipe embeddings); the reranker layer is already
 near-saturating what the pool surfaces._
+
+#### Production training path + train-query cap (2026-07-03)
+
+> **What ships vs what's studied.** The default training entrypoint
+> (`scripts/train_recommender.py`) trains **only** `lambdamart-nosub` on the six
+> non-substitution features and never loads Phase-2 artifacts; the runtime
+> serves it by default. Rationale: the sub_fill ablation is null (above) **and**
+> enabling substitution-backed features collapses example-generation throughput
+> ~1000× (259 → 0.25 queries/s on the 50k slice — `ContextGraph.neighbors()`
+> cold misses dominate). The full three-arm ablation (linear / lambdamart /
+> lambdamart-nosub with sub features) stays available behind
+> `--experimental-subs` for research runs. The Phase-2 substitution subsystem
+> itself is untouched — it is only excluded as a *ranking feature*.
+
+**Capped-sampling bias fix.** Capped runs (`max_train_queries` /
+`max_eval_queries`) previously took the **first N recipes in corpus file
+order** — a biased-hard prefix (eval ceiling 0.706–0.79; ~21% of attempted
+train queries dropped gold-unreachable). Capped selection now iterates recipes
+in `md5(seed:recipe_id)` hash order (`query_sim.sample_order`): unbiased,
+reproducible, and **nested** — the 10k sample is a true prefix of the 20k
+sample, so learning-curve points are comparable. Uncapped runs keep file order,
+so all uncapped historical numbers above are unchanged.
+
+**Train-query learning curve** — full 1.27M parser-fixed corpus, production
+arm, one fixed 2,000-query hash-sampled eval slice reused across caps, seed=13
+(`scripts/recommender_learning_curve.py`):
+
+| Train cap | Kept groups | recall@10 | mrr@10 | mrr@10\|in_pool | Gen time |
+| --------- | ----------- | --------- | ------ | --------------- | -------- |
+| 10,000 | 8,694 | 0.8485 | 0.8275 | 0.9689 | 14.1 min |
+| 20,000 | 17,472 | 0.8485 | 0.8275 | 0.9689 | 29.3 min |
+
+Metrics are **identical to full float precision** at both caps — the
+six-feature model saturates at (or below) 10k query-groups; doubling the
+training data changes nothing. The training default is therefore
+`--max-train-queries 10000` (`0` restores uncapped), making a full-corpus
+production training run **~25 minutes** end to end, versus an extrapolated
+~25 h for uncapped example generation (which also exceeds the 16 GB dev box).
+
+_Candidate ceiling on this unbiased slice = **0.854** (parser-fixed corpus,
+n=2,000) vs 0.706 in the pre-fix file-order table above; the gap conflates the
+2026-06-05 parser fix with the sampling-bias fix. The full all-arms re-run on
+the fixed corpus is still pending, but the structural findings hold here: the
+production reranker recovers **0.9689 mrr@10|in_pool** — near-saturating what
+retrieval surfaces — so first-stage candidate recall remains the bottleneck._
 
 ### Phase 4 — Nutrition & Dietary
 
