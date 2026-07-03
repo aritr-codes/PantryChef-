@@ -86,7 +86,7 @@ def score_queries(
     recall = mrr = recall_ip = mrr_ip = 0.0
 
     def feat_fn(p, r):
-        return extract_features(p, r, sub_lookup)
+        return extract_features(p, r, sub_lookup, canon=index.canon_sets[r.recipe_id])
 
     for pantry, gold_id, pool, in_pool in queries:
         ranked = rerank(index, pantry, model, feat_fn, k=k, columns=columns, pool=pool)
@@ -135,3 +135,4 @@ def evaluate(
     """
     queries = build_eval_queries(recipes, index, cfg, test_only)
     return score_queries(model, queries, index, sub_lookup, k, columns)
+

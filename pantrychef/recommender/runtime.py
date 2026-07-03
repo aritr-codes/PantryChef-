@@ -56,7 +56,12 @@ class RecommenderRuntime:
         pantry_set = {c for c in (canonicalize(p) for p in pantry) if c}
 
         def feat_fn(current_pantry: set[str], recipe):
-            return extract_features(current_pantry, recipe, self.sub_lookup)
+            return extract_features(
+                current_pantry,
+                recipe,
+                self.sub_lookup,
+                canon=self.index.canon_sets[recipe.recipe_id],
+            )
 
         return rerank(
             self.index,
