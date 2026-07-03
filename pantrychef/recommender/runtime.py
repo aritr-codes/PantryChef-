@@ -8,9 +8,17 @@ from pathlib import Path
 from pantrychef.common.types import ScoredRecipe
 from pantrychef.ingredients.normalize import canonicalize
 from pantrychef.recommender.bundle import DEFAULT_BUNDLE_NAME, RecommenderBundle
-from pantrychef.recommender.features import SubLookup, extract_features
+from pantrychef.recommender.features import SUB_FEATURES, SubLookup, extract_features
 from pantrychef.recommender.recommend import rerank
 from pantrychef.recommender.sub_lookup import load_sub_lookup
+
+# Production model first: the no-sub LambdaMART is the shipped recommender;
+# sub-feature models are ablation/research arms.
+_MODEL_PREFERENCE = ("lambdamart-nosub", "lambdamart", "linear")
+
+
+def _bundle_needs_subs(bundle: RecommenderBundle) -> bool:
+    return any(SUB_FEATURES.intersection(m.columns) for m in bundle.models.values())
 
 
 class RecommenderRuntime:
@@ -30,7 +38,9 @@ class RecommenderRuntime:
         sub_lookup: SubLookup = None,
     ) -> RecommenderRuntime:
         bundle = RecommenderBundle.load(path)
-        lookup = sub_lookup if sub_lookup is not None else load_sub_lookup(bundle.cfg)
+        lookup = sub_lookup
+        if lookup is None and _bundle_needs_subs(bundle):
+            lookup = load_sub_lookup(bundle.cfg)
         return cls(bundle=bundle, sub_lookup=lookup)
 
     @classmethod
@@ -49,7 +59,9 @@ class RecommenderRuntime:
         """Score pantry candidates with a persisted recommender model."""
         if k <= 0:
             return []
-        name = model_name or ("lambdamart" if "lambdamart" in self.models else "linear")
+        name = model_name or next(
+            (m for m in _MODEL_PREFERENCE if m in self.models), _MODEL_PREFERENCE[-1]
+        )
         bundled = self.models.get(name)
         if bundled is None:
             raise KeyError(f"unknown recommender model: {name}")
