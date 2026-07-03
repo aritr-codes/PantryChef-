@@ -9,6 +9,7 @@ the persisted artifact, and saves one recommender bundle to models/recommender/.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,6 +17,12 @@ from pathlib import Path
 from pantrychef.common import get_logger
 from pantrychef.config import get_settings
 from pantrychef.data.store import load_recipes
+from pantrychef.recommender.benchmark import (
+    BenchmarkRecorder,
+    ExampleProgress,
+    TrainObserver,
+    render_summary,
+)
 from pantrychef.recommender.bundle import DEFAULT_BUNDLE_NAME
 from pantrychef.recommender.config import RecConfig
 from pantrychef.recommender.sub_lookup import load_sub_lookup
@@ -23,6 +30,34 @@ from pantrychef.recommender.train import train_bundle
 from pantrychef.retrieval.index import InvertedIndex
 
 log = get_logger(__name__)
+
+
+class _ConsoleObserver:
+    def __init__(self, recorder: BenchmarkRecorder) -> None:
+        self.recorder = recorder
+        self._last_logged_progress: tuple[int, int] | None = None
+
+    def record_stage(self, key: str, label: str, seconds: float) -> None:
+        self.recorder.record_stage(key, label, seconds)
+
+    def record_examples_progress(self, progress: ExampleProgress) -> None:
+        self.recorder.record_examples_progress(progress)
+        current = (progress.recipes_processed, progress.queries_total)
+        if current == self._last_logged_progress:
+            return
+        self._last_logged_progress = current
+        pct = 0.0
+        if progress.recipes_total > 0:
+            pct = progress.recipes_processed / progress.recipes_total * 100.0
+        msg = (
+            f"Generate examples: {progress.recipes_processed}/{progress.recipes_total} "
+            f"recipes ({pct:.1f}%), {progress.queries_total} queries, "
+            f"{progress.queries_kept} kept"
+        )
+        if progress.elapsed_seconds > 0:
+            msg += f", {progress.queries_total / progress.elapsed_seconds:.1f} queries/s"
+            msg += f", {progress.candidates_total / progress.elapsed_seconds:.1f} candidates/s"
+        log.info(msg)
 
 
 def _git_commit() -> str | None:
@@ -56,14 +91,34 @@ def main(argv: list[str] | None = None) -> int:
         log.error("Missing %s. Run `make data` first.", recipes_path)
         return 1
 
-    recipes = load_recipes(recipes_path, limit=args.max_rows)
-    index = InvertedIndex.build(recipes)
+    git_sha = _git_commit()
     cfg = RecConfig(
         mask_fraction=args.mask_fraction,
         seed=args.seed,
         max_train_queries=args.max_train_queries,
     )
-    sub_lookup = None if args.no_subs else load_sub_lookup(cfg)
+    recorder = BenchmarkRecorder(
+        git_sha=git_sha,
+        dataset_size=0,
+        config={
+            "cli": {
+                "max_rows": args.max_rows,
+                "no_subs": args.no_subs,
+                "output": args.output,
+            },
+            "recommender": dataclasses.asdict(cfg),
+            "use_lambdamart": True,
+        },
+    )
+    observer: TrainObserver = _ConsoleObserver(recorder)
+
+    with recorder.stage("load_recipes", "Load recipes"):
+        recipes = load_recipes(recipes_path, limit=args.max_rows)
+    recorder.dataset_size = len(recipes)
+    with recorder.stage("build_index", "Build index"):
+        index = InvertedIndex.build(recipes)
+    with recorder.stage("load_substitutions", "Load substitutions"):
+        sub_lookup = None if args.no_subs else load_sub_lookup(cfg)
     bundle, stats = train_bundle(
         recipes,
         index,
@@ -72,14 +127,17 @@ def main(argv: list[str] | None = None) -> int:
         use_lambdamart=True,
         metadata={
             "trained_at": datetime.now(UTC).isoformat(),
-            "git_commit": _git_commit(),
+            "git_commit": git_sha,
         },
+        observer=observer,
     )
     bundle.metadata["train_stats"] = stats
 
     out = Path(args.output) if args.output else (s.models_dir / "recommender" / DEFAULT_BUNDLE_NAME)
-    bundle.save(out)
-    restored = bundle.load(out)
+    with recorder.stage("save_bundle", "Save bundle"):
+        bundle.save(out)
+    with recorder.stage("validation_reload", "Validation reload"):
+        restored = bundle.load(out)
     if set(restored.models) != set(bundle.models):
         log.error(
             "Artifact integrity check failed: restored models %s != %s",
@@ -89,6 +147,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     log.info("Saved recommender bundle to %s", out)
     log.info("Training stats: %s", stats)
+    log.info("Benchmark summary:\n%s", render_summary(recorder.build_result()))
     return 0
 
 
