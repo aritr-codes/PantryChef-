@@ -29,12 +29,6 @@ class Settings(BaseSettings):
     repo_root: Path = _REPO_ROOT
     data_dir: Path = Field(default=_REPO_ROOT / "data")
     models_dir: Path = Field(default=_REPO_ROOT / "models")
-    experiments_dir: Path = Field(default=_REPO_ROOT / "experiments")
-
-    # Tracking
-    mlflow_tracking_uri: str = Field(
-        default=f"file:{(_REPO_ROOT / 'experiments' / 'mlruns').as_posix()}"
-    )
 
     # Logging
     log_level: str = "INFO"

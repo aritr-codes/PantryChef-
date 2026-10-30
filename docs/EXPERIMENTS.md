@@ -1,7 +1,7 @@
 # Experiment Log
 
 Scientific method, visible. One entry per experiment:
-**hypothesis → config → result → conclusion**, with an MLflow run link.
+**hypothesis → config → result → conclusion**, with a link to a results file.
 
 > Update per experiment. Newest first.
 
@@ -10,9 +10,9 @@ Scientific method, visible. One entry per experiment:
 ```
 ### EXP-NNNN — <short title>   (YYYY-MM-DD)
 - **Hypothesis:** what we expect and why.
-- **Config:** Hydra config path / overrides; data version.
+- **Config:** command and options; data version.
 - **Setup:** model, hardware (local / Colab / Kaggle).
-- **Result:** key metrics (link MLflow run).
+- **Result:** key metrics (link the results file).
 - **Conclusion:** accept/reject hypothesis; next action.
 ```
 

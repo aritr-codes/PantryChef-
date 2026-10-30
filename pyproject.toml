@@ -1,7 +1,7 @@
 [project]
 name = "pantrychef"
-version = "0.0.0"
-description = "No-LLM multimodal cooking assistant: ingredient substitution, recipe recommendation, nutrition."
+version = "0.4.0"
+description = "Pantry-first recipe search research code with no LLM: parsing, retrieval, ranking and substitution."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -25,7 +25,6 @@ substitution = [
     "gensim>=4.3.0",
     "scipy>=1.11",
     "numpy>=1.26",
-    "mlflow>=2.9",
 ]
 # Phase 3 reranker. Installed on demand to keep the base env light.
 recommend = ["lightgbm>=4.0", "scikit-learn>=1.4"]
@@ -45,6 +44,8 @@ packages = ["pantrychef"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# docs/ holds one-off audit scripts kept as a record, and old plans with code snippets.
+extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4"]

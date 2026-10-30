@@ -38,7 +38,7 @@ datasets/
 *.db
 *.sqlite
 
-# Models / artifacts — tracked via MLflow + model cards
+# Models / artifacts — described in model cards
 models/*
 !models/.gitkeep
 checkpoints/

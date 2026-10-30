@@ -1,6 +1,6 @@
 # 0001. Monorepo, uv/ruff/pytest, Hydra + MLflow
 
-- **Status:** Accepted
+- **Status:** Accepted. Amended 2026-10-30: M0 removed Hydra and MLflow. No code loaded the Hydra configs, and MLflow logged only 4 runs with no metrics.
 - **Date:** 2026-05-30
 - **Deciders:** Tech Lead, ML Eng
 

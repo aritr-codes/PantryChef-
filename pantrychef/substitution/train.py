@@ -2,7 +2,7 @@
 
 Pure, testable orchestration: corpus -> word2vec; co-occurrence -> SPPMI ->
 context graph. `Artifacts.substitutor()` wires the arms + dietary tagger into a
-ready Substitutor. The script layer adds argparse + MLflow.
+ready Substitutor. The script layer adds argparse.
 """
 
 from __future__ import annotations
