@@ -185,12 +185,24 @@ search and the old candidate ceiling do not apply to the product.
 6. If all groups are empty, compute `blockers`: the single change that returns the most
    results. A change is either clearing the diet filter or adding one item. Removing a pantry
    item never helps, because it cannot reduce a missing count. Until diet flags land in M5,
-   only `add_item` applies. Sort by count, then by ingredient id.
+   only `add_item` applies. Sort by count, with `clear_diet` first on a tie, then by ingredient
+   id.
 
-The score in step 4 is `sum(idf(i) for i in pantry and recipe) / sqrt(sum(idf(i) for i in
-recipe))`. The name "IDF cosine" is shorthand, because this is not a true cosine. M4 may change
-it, and the Python and TypeScript engines change together. The diet filter runs before step 3,
-so `groups`, `unlocks` and their counts all reflect it.
+The score in step 4 is `sum(w(line) for lines the pantry satisfies) / sqrt(sum(w(line) for all
+lines))`. The name "IDF cosine" is shorthand, because this is not a true cosine.
+
+- `w(line)` is the largest IDF among the line's options. It is 0 for an optional line, an
+  unread line and a line satisfied only by a staple.
+- `idf(i) = log(1 + N / df(i))`, where `N` is the number of recipes in the pack and `df(i)` is
+  the number of recipes with a line that lists `i`.
+- If the denominator is 0, the score is 0.
+
+M4 may change this, and the Python and TypeScript engines change together.
+
+The diet filter runs before step 3. It removes only `does_not_fit` recipes. When a diet is set,
+`fits` sorts before `unknown` inside each group, ahead of the keys in step 4. `groups`, `unlocks`
+and their counts include `unknown` recipes. Hiding them in the app is a display choice, and it
+does not change the counts.
 
 The learned ranker replaces only the first sort key in step 4, and only if it wins the
 test in [ADR 0005](decisions/0005-honest-claims-and-eval-reset.md). Grouping stays,

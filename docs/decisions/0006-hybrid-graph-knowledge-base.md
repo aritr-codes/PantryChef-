@@ -111,16 +111,21 @@ Run a spike of 2 to 3 days in M3 (ESTIMATE), after collapse and synonyms are in 
   pantries. None may enter the M4 test split.
 - **Baseline:** the same table with no traversal. Collapse and synonyms may already deliver
   the same effect, so a graph gets no credit for them.
-- **Measure:** take each recipe that traversal newly moves into "make now" or "one away". A
-  person judges from the real ingredient lines whether the pantry really meets the claim. The
-  person does not see the edges, or which system gave the recipe. The label therefore does not
-  depend on the edges under test. Only one rater may be available, so report that limit.
+- **Freeze:** fix the table, the edges, the pantries and a sampling plan before any judging.
+  Make one pass. If edges change after judging, the result counts as exploration, and a new
+  set of pantries is needed for the decision.
+- **Measure:** sample up to 200 recipes that traversal newly moves into "make now" or "one
+  away", and mix in an equal number of baseline results as decoys. A person judges from the real
+  ingredient lines whether the pantry really meets the claim, with no view of the edges or of
+  the source of each recipe. The label therefore does not depend on the edges under test. If the
+  rater also wrote the edges, or only one rater is available, report that limit.
 - **Accept** only if all of these hold. The thresholds are proposals. The owner fixes them
   before the spike starts:
   - A query uses at least two edge types.
-  - Correct new recipes minus wrong new recipes, per pantry, has a paired 95% interval above
-    zero.
-  - At least 90% of newly surfaced recipes are judged correct.
+  - Correct new recipes minus wrong new recipes, per pantry, has a 95% interval above zero.
+    The baseline adds no new recipes, so this is a one-sample interval.
+  - At least 90% of newly surfaced recipes are judged correct, for "make now" and for "one
+    away", each counted alone.
 - **Otherwise:** reject this ADR, keep the table and record the result. Having no newly
   surfaced recipes is a rejection.
 

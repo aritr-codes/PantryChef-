@@ -139,7 +139,7 @@ Kaggle: run Kaggle tooling with `uvx kaggle`.
 | P4 nutrition coverage 0.800 / 0.487 | Retracted. First 5,000 rows only. Random sample: 0.710 / 0.439 |
 | P1 F1 0.864, recall@10 0.873 | No log on disk. Unsupported |
 | GISMo comparison | Pre-fix. Never rerun. Unsupported |
-| 246 tests, 91% to 92% coverage | Stand. 92% on this laptop and 91% in the review run, at the same commit |
+| 246 tests, 91% to 92% coverage | Stand. 92% in this working copy and 91% in a fresh clone, at the same commit |
 | sub_fill null result (0.9349 vs 0.9347) | Stands. It is an honest null |
 
 Full ledger: 43 claims. 14 FALSE, 11 UNSUPPORTED, 11 STALE, 7 TRUE ([report 07](research/2026-10-stage1/07_engineering_claims.md)).

@@ -144,7 +144,8 @@ gate.
 - M1 builds staples, grouping and IDF ordering. Refine them here, and run the IDF variants.
 - Add recipe-quality signals from structure and any others that pass review.
 - Build the hand-judged set now, on the post-M3 pack: 100 pantries, top 5 from 3 systems,
-  with pairwise preference. Up to about 1,500 judgments. Split by pantry: 60 dev and 40 test.
+  with pairwise preference. Up to about 1,500 judgments. Split by pantry: 60 dev and 40 test. Pantries used in an earlier spike or pilot stay out of
+  the test split.
 - Train a small pairwise model with few features (IDF, typicality, structure) on the dev
   judgments, with cross-validation. Judgments are too few for LambdaMART, but they may
   suit a small linear model (HYPOTHESIS).
