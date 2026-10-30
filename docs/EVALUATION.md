@@ -10,6 +10,7 @@
 > | --- | --- |
 > | Phase 1 parser F1, retrieval recall@10 | UNSUPPORTED. No log exists. Gold comes from the same data |
 > | Phase 2 "graph beats food2vec" | RETRACTED as a headline. Full corpus: the 95% interval for the MRR difference is -0.048 to +0.111. β was tuned on the same 82 queries |
+> | Phase 2 hybrid arm | Not a win. Against word2vec, +0.059 with a 95% interval of 0.007 to 0.110, but it was tuned on the same queries |
 > | Phase 2 28k tables | STALE. Pre-fix sample run |
 > | Phase 2 dietary 100% | RETRACTED. The tagger checks itself, so the metric cannot fail |
 > | Phase 2 GISMo table | UNSUPPORTED. Pre-fix, never rerun. GISMo's model was never run |
@@ -362,7 +363,5 @@ field). Absent nutrients are reported as `None` (unknown), never `0.0`. **Not fo
 medical, clinical, or allergen-safety use.**
 
 ### Phase 5 — Detection
-| Metric | Current | Run |
-| ------ | ------- | --- |
-| mAP@0.5 | _tbd_ | — |
-| MX150 latency (ms/img) | _tbd_ | — |
+
+Not started. Vision is gated in M8 of [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md).

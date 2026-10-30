@@ -18,5 +18,6 @@ Scientific method, visible. One entry per experiment:
 
 ---
 
-_No experiments yet. First entries land in Phase 1 (parser tuning) and Phase 2
-(embedding vs graph vs hybrid ablation)._
+_This log was not used for the 2026-05 to 2026-07 work. That evidence is in
+[EVALUATION.md](EVALUATION.md) and [TECHNICAL_AUDIT.md](TECHNICAL_AUDIT.md). New entries start in
+M2._

@@ -64,7 +64,7 @@ Each table scores the options on these points. The columns are shortened.
 | Training corpus | Open Recipes for statistics only. Statistics ship only if mined swaps pass the M5 blind rating. If they fail, nothing from Open Recipes ships | ADR 0003 |
 | RecipeNLG | Research and comparison only | ADR 0003 |
 | Hosting | Static site on GitHub Pages | ADR 0004, report 05 |
-| Engine | TypeScript in a Web Worker, with a Python reference and parity tests | ADR 0004 |
+| Engine | TypeScript in the browser (a Web Worker only if latency requires it), with a Python reference and parity tests | ADR 0004 |
 | First ranker | IDF-weighted overlap. A learned ranker ships only if it wins on hand-judged pantries | ADR 0005, synthesis 4.3 |
 | Substitution | Curated swaps ship in v1 (about 200 to 300 rows). Mined swaps, limited to the same role, ship in v1 only if they pass the M5 blind rating. Otherwise they do not ship | Report 02, ADR 0003, DEVELOPMENT_PLAN.md M5 |
 | Dietary | Three-state preference filter. No allergen claim | ADR 0005 |
@@ -83,7 +83,7 @@ Sources: [report 01](research/2026-10-stage1/01_recommender.md), [synthesis 2.1 
 - The old recovery test builds each pantry by removing 30% of one recipe's ingredients. The pantry is always a subset of the right recipe. A real pantry is not (MEASURED, reports 01 and 07, two independent runs).
 - A rule with no machine learning reached recall@10 0.975 against overlap at 0.740 (50k recipes, 1,404 queries). LambdaMART scored about 0.980 in the project log on a different query set of 9,354 (MEASURED, report 01).
 - On 20k recipes and 1,500 queries the rule scored MRR@10 0.952, LambdaMART 0.958 and overlap 0.544 (MEASURED, report 07).
-- The review added pantries with unrelated extra items (recall@10, 20k spread sample, MEASURED, no paired intervals):
+- The review added pantries with unrelated extra items (MRR@10, 20k spread sample, MEASURED, no paired intervals; the IDF cosine output from `evidence/review/rule2.py` is not committed):
 
   | Extra items | Overlap | Fraction rule | Model, clean training | Model, retrained | IDF cosine |
   | --- | --- | --- | --- | --- | --- |
@@ -312,7 +312,7 @@ Source: [report 05](research/2026-10-stage1/05_deployment.md). Vendor figures we
 | Cloudflare R2 | Free egress for big shards | Medium | 10 GB-month free (DOCUMENTED) | Medium | Low | Fair | **Not needed for the 3,800-recipe pack** |
 | Oracle Always Free | Large VM | High | Free, with idle reclamation and conflicting limits | Hard | High risk | Poor | **Reject** |
 | AWS Lambda, Vercel, Netlify functions, jsDelivr | Various | Medium | Various | Medium | Medium | Fair | **Not evaluated in depth.** Figures unverified (see gaps) |
-| Static site plus TypeScript engine in a Web Worker | No server | Medium: two implementations | C: client. M: small. I: free | Easy | Parity tests needed | Good | **Adopt** (ADR 0004) |
+| Static site plus TypeScript engine in the browser | No server | Medium: two implementations | C: client. M: small. I: free | Easy | Parity tests needed | Good | **Adopt** (ADR 0004) |
 | Pyodide in the browser | Reuses Python | Medium | Tens of MB, seconds to boot on a phone | Medium | Low | Poor | **Reject for the app.** Possible as a CI oracle |
 | SQLite-WASM or DuckDB-WASM | Query large files by range | High | 1 to 4 MB of wasm | Needs Range and CORS | Medium | Poor | **Reject.** The pack is small |
 | Static frontend plus Python API | One implementation | Medium | Needs a host | Hard | Hard | Poor | **Reject for v1.** Keep the `Engine` interface so it stays possible (ADR 0004) |

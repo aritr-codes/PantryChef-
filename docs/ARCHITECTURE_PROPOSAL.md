@@ -148,7 +148,8 @@ AnswerRequest   pantry: ingredient_id[], staples: ingredient_id[], diet: Diet | 
 Answer          groups: { make_now, one_away, two_away }, unlocks: Unlock[], blockers: Blocker[],
                 unknown_pantry: string[], pack: PackInfo
 Unlock          ingredient_id, name, recipes: int    (items that would move the most recipes to make now)
-Blocker         ingredient_id, name, recipes: int    (shown on zero results: removing a diet or item)
+Blocker         kind: clear_diet | add_item, ingredient_id: ingredient_id | null, name, recipes: int
+                (shown on zero results)
 RecipeResult    recipe_id, title, have: int, total: int, missing: Missing[], unread: int,
                 diet_state, reasons: string[]
 Missing         options: ingredient_id[], text, swap: SwapHint | null
@@ -181,8 +182,15 @@ search and the old candidate ceiling do not apply to the product.
 5. Compute `unlocks`: for each ingredient missing from a one-away recipe, count the
    recipes it completes. Show the top items. This is the core promise, "the one item
    that unlocks more". Sort by count, then by ingredient id.
-6. If all groups are empty, compute `blockers`: the single diet or pantry change that
-   returns the most results.
+6. If all groups are empty, compute `blockers`: the single change that returns the most
+   results. A change is either clearing the diet filter or adding one item. Removing a pantry
+   item never helps, because it cannot reduce a missing count. Until diet flags land in M5,
+   only `add_item` applies. Sort by count, then by ingredient id.
+
+The score in step 4 is `sum(idf(i) for i in pantry and recipe) / sqrt(sum(idf(i) for i in
+recipe))`. The name "IDF cosine" is shorthand, because this is not a true cosine. M4 may change
+it, and the Python and TypeScript engines change together. The diet filter runs before step 3,
+so `groups`, `unlocks` and their counts all reflect it.
 
 The learned ranker replaces only the first sort key in step 4, and only if it wins the
 test in [ADR 0005](decisions/0005-honest-claims-and-eval-reset.md). Grouping stays,
@@ -195,8 +203,8 @@ rank better. The evaluation decides.
 
 | Artifact | Format | Size target | Source |
 | --- | --- | --- | --- |
-| `core.vN.json.gz` | Ingredients, recipe lines as ids, titles, IDF, curated swaps | Under 3 MB (a measured trim is 1.2 MB) | Table, Wikibooks |
-| `text.vN.json.gz` | Full recipe text, CC BY-SA 4.0 | Under 8 MB (ESTIMATE) | Wikibooks |
+| `core.vN.json.gz` | Ingredients, recipe lines as ids, titles, IDF, curated swaps | Under 3 MB | Table, Wikibooks |
+| `text.vN.json.gz` | Full recipe text, CC BY-SA 4.0 | Under 7 MB, so core and text stay under the 10 MB in ADR 0003 (ESTIMATE; a rough trim with steps measured 1.2 MB gzipped) | Wikibooks |
 | `mined.vN.json.gz` | Mined swaps with evidence, only if M5 passes | Under 2 MB (ESTIMATE) | Open Recipes |
 | `manifest.vN.json` | sha256, size, commit, input hashes, licence of each file, metrics | Small | Pack builder |
 

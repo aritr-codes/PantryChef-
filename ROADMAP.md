@@ -30,7 +30,7 @@ PR #5 (parser fix and training cleanup) merged on 2026-10-30.
 | Audit | Independent audit, research and decisions | ✅ 2026-10-30 |
 | M0 Reset | Honest docs, fresh clone works, dead config removed | 🟡 On branch `chore/m0-reset` |
 | M1 Thin slice | First hosted page with real search over Wikibooks recipes | ⬜ |
-| M2 Evaluation baseline | Realistic protocols, rule baselines, hand-judged set | ⬜ |
+| M2 Evaluation baseline | Realistic protocols, rule baselines, judging protocol and pilot | ⬜ |
 | M3 Ingredient foundation | Curated table, resolver, clean vocabulary | ⬜ |
 | M4 Search and ranking | IDF ordering and a ranker that must beat it | ⬜ |
 | M5 Trust layer | Three-state diet flags, curated and mined swaps | ⬜ |

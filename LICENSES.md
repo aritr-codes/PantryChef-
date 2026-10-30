@@ -24,6 +24,7 @@ Git ignores `data/raw/`, `data/processed/` and `models/`.
 | `data/processed/recipes.jsonl`, `vocab.json` | RecipeNLG terms | Research only | **Never** |
 | `models/recommender/`, `models/substitution/` | Derived from RecipeNLG | Research only | **Never** |
 | Recipe1M | Separate terms | Not used | **Never** |
+| `data/eval/subs_gold.csv` | Mined from RecipeNLG | Research only | **Never** |
 | GISMo gold files (`data/raw/gismo/`, `data/eval/subs_gold_gismo.csv`) | CC BY-NC 4.0 | Research only | **Never** |
 | Open Recipes snapshot (`data/raw/openrecipes/`) | CC BY 3.0, database licence. This does not clear each publisher's rights | Statistics only | Text and images **never**. Derived statistics only if mined swaps pass M5, with a credit on the About page |
 | Wikibooks Cookbook snapshot (`data/raw/wikibooks_cookbook/`) | CC BY-SA 4.0. Third-party scrape, used for measurement only | Measurement | Not this copy. M1 builds a snapshot from the official MediaWiki API, with revision ids |

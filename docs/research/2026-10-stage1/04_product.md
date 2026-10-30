@@ -8,13 +8,13 @@ Labels: VERIFIED = seen in repo/data/cited source this session. HYPOTHESIS = my 
 
 **Absent from the source entirely (VERIFIED, 3000 raw rows + schema):** image, time, servings, rating, cuisine, course, author, nutrition. docs/DATASET.md says "no per-serving - RecipeNLG has no servings field".
 - Time: 65% of 3000 early rows mention "N minutes/hours" in steps, but that is a step duration, not total time. Not usable as a card badge.
-- Servings: 23% mention serves/yields/makes in title or steps (e.g. "Quick Coffee Cake(6 Servings)" leaks into titles). Not reliable.
+- Servings: 23% mention serves/yields/makes in title or steps (a serving count sometimes leaks into a title). Not reliable.
 - 31% of rows have at least one ingredient line without a leading number ("salt to taste" etc.).
 
 **Sources (VERIFIED):** the first 3000 rows are all `Gathered` from www.cookbooks.com. Sampling the CSV at 30/60/90% offsets (7.5k rows, regex): 69% `Gathered`, 31% `Recipes1M`; domains food.com 44%, tasteofhome.com 36%, then cookeatshare, cookpad, foodnetwork, kraftrecipes, epicurious, tastykitchen. Link-out is possible for most; whether old cookbooks.com ids still resolve is unchecked (HYPOTHESIS).
 
 **Title quality (VERIFIED, ~35 titles read + regex on 3000):** about 5% carry artefacts (digits, parentheses, ALL-CAPS runs). Seen (RecipeNLG titles withheld from this public record): a family name with the `'S` bug, a place name run into the title, a parenthetical suffix, and joke titles. The title-case apostrophe bug ('S) is systematic. Many titles are family-named or jokey (low browse value). Roughly 85-90% usable after cleanup (HYPOTHESIS on the exact rate).
-**Instruction quality (VERIFIED):** median 216 characters in total, mean 5 steps; 11% have one step or fewer; encoding damage ("Preheat oven to 425�" lost the degree sign). Terse ("Mix all together and beat into batter"). Fine as a reminder for experienced cooks, poor for novices. Do not present as a tutorial.
+**Instruction quality (VERIFIED):** median 216 characters in total, mean 5 steps; 11% have one step or fewer; encoding damage (a degree sign lost from an oven temperature). Terse (one short sentence is common). Fine as a reminder for experienced cooks, poor for novices. Do not present as a tutorial.
 
 **What `canonical` looks like to a human (VERIFIED):** machine tokens, not display names: "jell o gelatin", "level tsp.", "field", "carton cream", "bite size shredded", "butter margarine", "tomato diced", "chicken breast boned", "pear halve", "english pea", "wesson oil". Brand names, unit leaks, stray words ("field" from field peas), merged alternatives ("butter margarine"). Never show it raw. Show the `ingredients_raw` line in the recipe and a curated label on chips. Autocomplete needs a human-checked display layer over the 30,481-token vocab (HYPOTHESIS: ~2-5k popular names, long tail hidden).
 

@@ -31,7 +31,8 @@ flowchart TD
   TRAINS["scripts/train_substitution.py"]
   BS["Substitution bundle"]
   SUB["pantrychef substitute"]
-  NUT["pantrychef/nutrition<br/>no command, no output path"]
+  USDAJ["data/processed/usda.json"]
+  NUT["pantrychef.eval.nutrition_main<br/>eval harness only, no recipe output"]
 
   RAW --> CLEAN
   CLEAN --> REC
@@ -42,6 +43,8 @@ flowchart TD
   VOC --> TRAINS
   TRAINS --> BS --> SUB
   RAW --> NUT
+  VOC --> NUT
+  USDAJ --> NUT
 ```
 
 Known breaks in this flow are in

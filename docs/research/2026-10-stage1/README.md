@@ -59,8 +59,9 @@ Two agents tested this independently with rules that use no machine learning:
 Results depend on the slice. Overlap MRR is 0.693 on a sample spread through the
 corpus, against 0.544 on the first 20k.
 
-The review tested pantries with extra items sampled by corpus frequency (recall@10
-on a 20k spread sample):
+The review tested pantries with extra items sampled by corpus frequency (MRR@10
+on a 20k spread sample; an earlier version mislabelled these values as recall@10). The
+IDF cosine column comes from `evidence/review/rule2.py`, whose output is not committed:
 
 | Extra items | Overlap | Fraction rule | Model, clean training | Model, retrained on extras | IDF cosine rule |
 | --- | --- | --- | --- | --- | --- |

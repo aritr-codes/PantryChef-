@@ -113,8 +113,9 @@ gate.
 
 - Add rule-based collapse of size, container and preparation words, and fix the
   singulariser.
-- Grow the table in measured steps from 500 rows. Reaching the targets may need about
-  1,700 rows or more (MEASURED before collapsing). Collapse may reduce this.
+- Grow the table in measured steps from 500 rows. About 1,700 rows reach 90% of
+  mentions, and 2,000 rows fully cover only 53.4% of recipes, so the 60% target needs more than
+  2,000 rows (MEASURED before collapsing). Collapse may reduce this.
 - Add synonyms and UK and US names. Consider the Epicure vocabulary only if its licence and
   source provenance are both clear.
 - Add a resolver with exact, synonym and fuzzy steps, plus a matching browser version.
@@ -140,7 +141,7 @@ gate.
 
 **Objective:** the best honest ranking, and the recommender deliverable.
 
-- Implement staples, grouping and IDF ordering. Run the IDF variants.
+- M1 builds staples, grouping and IDF ordering. Refine them here, and run the IDF variants.
 - Add recipe-quality signals from structure and any others that pass review.
 - Build the hand-judged set now, on the post-M3 pack: 100 pantries, top 5 from 3 systems,
   with pairwise preference. Up to about 1,500 judgments. Split by pantry: 60 dev and 40 test.
@@ -254,7 +255,7 @@ demonstrates, and what remains if every gate fails.
 | Information retrieval | Index, IDF ordering in browser, protocols | Certain | Unchanged |
 | Recommendation | Small ranker with judged data | Gated (M4) | The IDF rule ships. A published negative result remains |
 | Knowledge graph | Ingredient table with roles and relations. Mined context graph is research | Partly certain. Table is certain, graph in product is gated (M3 spike in ADR 0006, M5) | A table, not a true graph, in the product |
-| Hybrid graph with ML on top (proposed, [ADR 0006](decisions/0006-hybrid-graph-knowledge-base.md)) | Typed graph artifact, a build-time mention classifier, edge proposals, graph features in the ranker | Gated. The M3 spike decides the graph. Each model has its own gate under ADR 0005 | Flat table and rules. Results stay as research |
+| Hybrid graph with ML on top (proposed, [ADR 0006](decisions/0006-hybrid-graph-knowledge-base.md)) | Typed graph artifact, a build-time mention classifier, edge proposals, graph features in the ranker | Gated. The M3 spike decides the graph. Each model must beat its no-ML baseline on a test fixed in advance (ADR 0005 rules apply) | Flat table and rules. Results stay as research |
 | Practical ML | Mined swaps, ranker | Gated (M4, M5) | Research results only |
 | Computer vision | Tiled image-text matching | Gated (M8) | A published test, no feature |
 | Model optimisation | Vision quantisation tests. Small ranker in browser | Gated (M8, M4) | Measurements only |

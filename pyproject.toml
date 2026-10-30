@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Installed per-phase to keep the base env light on free notebooks.
+# Tests need every extra: uv sync --all-extras.
 dev = [
     "ruff>=0.4",
     "pytest>=8.0",

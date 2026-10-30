@@ -233,7 +233,7 @@ flowchart TD
 Notes on the paths:
 
 - **Empty pantry:** the screen shows the quick-pick grid and example pantries. It never shows a blank page.
-- **Zero result:** the screen shows the `blockers` result, the single change that returns the most results, and offers "Remove it to see N recipes". It never shows only "No matching recipes".
+- **Zero result:** the screen shows the `blockers` result, the single change that returns the most results, and offers "Clear the diet filter" or "Add this item", with the count N of recipes. It never shows only "No matching recipes".
 - **Error:** the pantry is never cleared by an error.
 - **Storage blocked:** private browsing can block local storage. The app says so and offers an export.
 
@@ -673,7 +673,7 @@ Test dark mode on its own. Do not invert the light colours. Dark mode is optiona
 
 ### 15.1 Version 1 (planned)
 
-- Static site on GitHub Pages. TypeScript engine in a Web Worker. One recipe pack (ADR 0004).
+- Static site on GitHub Pages. TypeScript engine in the browser (a Web Worker only if latency requires it). One recipe pack (ADR 0004).
 - Pantry entry: autocomplete, quick-pick grid, example pantries, synonyms, fuzzy match, "Not recognised" chip.
 - Staples, editable.
 - Results: Make now, One item away, and a conditional Two items away.
@@ -729,7 +729,7 @@ know how many people use the app. GitHub gives only repository traffic for the o
 | --- | --- | --- |
 | Make-now counts are thin | 1 to 73 recipes in the test; "tiny" pantry gave 1 (MEASURED) | Make "One item away" the main promise. Show the best item to add. Add example pantries. Show a Two items away group when needed |
 | Few recipes overall | About 3,800, and many are regional | Be honest about size on the About page. Plan a "more ideas" pack later |
-| Ingredient table not ready | The old vocabulary has junk and duplicates (report 06). Coverage of the Wikibooks lines is unmeasured | Build a first table of about 500 rows, measure coverage on the Wikibooks lines, and ship the diet filter only if it passes. Size matters: on Wikibooks before collapsing, 500 rows cover 75.4% of mentions and 16.1% of recipes in full. 1,000 rows cover 84.2% and 30.5%. 2,000 rows cover 91.6% and 53.4% (MEASURED in review with a top-N proxy) |
+| Ingredient table not ready | The old vocabulary has junk and duplicates (report 06) | Build a first table of about 500 rows, measure coverage on the Wikibooks lines, and ship the diet filter only if it passes. Size matters: on Wikibooks before collapsing, 500 rows cover 75.4% of mentions and 16.1% of recipes in full. 1,000 rows cover 84.2% and 30.5%. 2,000 rows cover 91.6% and 53.4% (MEASURED in review with a top-N proxy) |
 | Parsing real lines is hard | 27% of lines have no amount. 10% hold "or". Fractions, ranges and brackets are common | Use a gold set of 300 hand-labelled lines (report 06). Show the original line. Mark "Check this line" |
 | Weak or stale pages | 75 pages have very short steps. The snapshot dates from 2024-07-31 and wiki pages change | Show the snapshot date. Link to the live page. Filter very weak pages if the owner agrees |
 | Page leftovers in text | 57 `Template:` lines found | Remove them at pack build time and re-check |

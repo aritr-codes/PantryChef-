@@ -182,7 +182,7 @@ sub_fill; **`−sub_fill` is the cleaner default** given the null.
 ## Production training path (2026-07-03)
 
 **Correction, 2026-10-30:** nothing ships. This section describes code paths. No bundle of
-this form exists on disk, and no full run completed.
+this form exists on disk, and no full run completed. "Saturates" and "~25 min" are retracted.
 
 What ships is narrower than what was studied:
 

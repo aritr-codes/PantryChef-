@@ -1,5 +1,8 @@
 # Challenges
 
+> **Status, 2026-10-30: historical record.** Some numbers and claims below are retracted. Read
+> [EVALUATION.md](EVALUATION.md) for each verdict.
+
 Real obstacles hit and how they were attacked — especially free-hardware
 workarounds. This is the honest engineering story recruiters remember.
 
