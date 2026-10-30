@@ -1,0 +1,31 @@
+recipes 19911
+eval 2000 ceiling 1.0
+16:03:22 | INFO    | pantrychef.recommender.train | build_examples: {'n_queries_total': 1000, 'n_queries_kept': 1000, 'n_dropped_empty_pool': 0, 'n_dropped_no_gold': 0}
+overlap {'mrr': 0.693, 'rec': 0.9495}
+ruleA {'mrr': 0.9911, 'rec': 1.0}
+ruleB {'mrr': 0.9927, 'rec': 1.0}
+ruleC {'mrr': 0.9911, 'rec': 1.0}
+idfcov {'mrr': 0.6967, 'rec': 0.9595}
+leakonly {'mrr': 0.9687, 'rec': 0.9945}
+supersets in pool per query 1.585
+cap 1000 kept 1000 {'mrr': 0.9932, 'rec': 0.9995} mrr_exact 0.993225 sec 143 gain {'coverage': 280.0, 'match_frac_pantry': 97674.0, 'n_matched': 147.0, 'n_missing': 197.0, 'recipe_len': 111.0, 'dietary_ok': 0.0}
+16:05:47 | INFO    | pantrychef.recommender.train | build_examples: {'n_queries_total': 2000, 'n_queries_kept': 2000, 'n_dropped_empty_pool': 0, 'n_dropped_no_gold': 0}
+cap 2000 kept 2000 {'mrr': 0.9928, 'rec': 1.0} mrr_exact 0.9928250000000001 sec 36 gain {'coverage': 713.0, 'match_frac_pantry': 196218.0, 'n_matched': 215.0, 'n_missing': 98.0, 'recipe_len': 80.0, 'dietary_ok': 0.0}
+16:06:30 | INFO    | pantrychef.recommender.train | build_examples: {'n_queries_total': 4000, 'n_queries_kept': 4000, 'n_dropped_empty_pool': 0, 'n_dropped_no_gold': 0}
+  vs prev: model-strings-equal False gold ranks equal 1985 / 2000 top10 lists equal 1042
+cap 4000 kept 4000 {'mrr': 0.9931, 'rec': 1.0} mrr_exact 0.993075 sec 57 gain {'coverage': 1368.0, 'match_frac_pantry': 394004.0, 'n_matched': 341.0, 'n_missing': 163.0, 'recipe_len': 29.0, 'dietary_ok': 0.0}
+16:07:36 | INFO    | pantrychef.recommender.train | build_examples: {'n_queries_total': 8000, 'n_queries_kept': 8000, 'n_dropped_empty_pool': 0, 'n_dropped_no_gold': 0}
+  vs prev: model-strings-equal False gold ranks equal 1999 / 2000 top10 lists equal 843
+cap 8000 kept 8000 {'mrr': 0.9931, 'rec': 1.0} mrr_exact 0.993075 sec 79 gain {'coverage': 2719.0, 'match_frac_pantry': 788493.0, 'n_matched': 652.0, 'n_missing': 163.0, 'recipe_len': 101.0, 'dietary_ok': 0.0}
+  vs prev: model-strings-equal False gold ranks equal 2000 / 2000 top10 lists equal 378
+LM- ruleA dMRR, CI (0.002, 0.0007, 0.0035) gold-rank-diff queries 9
+LM- ruleB dMRR, CI (0.0004, -0.0008, 0.0016) gold-rank-diff queries 12
+LM- ruleC dMRR, CI (0.002, 0.0007, 0.0035) gold-rank-diff queries 9
+LM- idfcov dMRR, CI (0.2963, 0.2819, 0.3114) gold-rank-diff queries 939
+LM- leakonly dMRR, CI (0.0244, 0.019, 0.0299) gold-rank-diff queries 84
+LM-overlap (0.3001, 0.2851, 0.3155)
+d 0 ceil 1.0 overlap {'mrr': 0.6991, 'rec': 0.951} ruleA {'mrr': 0.9938, 'rec': 1.0} idf {'mrr': 0.7122, 'rec': 0.961} LM-clean {'mrr': 0.9951, 'rec': 1.0} LM-retrained {'mrr': 0.9951, 'rec': 1.0} retrain-idf (0.2829, 0.2626, 0.3045)
+d 3 ceil 1.0 overlap {'mrr': 0.5883, 'rec': 0.914} ruleA {'mrr': 0.9725, 'rec': 1.0} idf {'mrr': 0.5996, 'rec': 0.94} LM-clean {'mrr': 0.8224, 'rec': 0.974} LM-retrained {'mrr': 0.985, 'rec': 1.0} retrain-idf (0.3854, 0.3641, 0.4067)
+d 5 ceil 1.0 overlap {'mrr': 0.5045, 'rec': 0.89} ruleA {'mrr': 0.9489, 'rec': 0.99} idf {'mrr': 0.5334, 'rec': 0.927} LM-clean {'mrr': 0.7784, 'rec': 0.963} LM-retrained {'mrr': 0.9775, 'rec': 0.998} retrain-idf (0.4441, 0.4225, 0.4657)
+d 10 ceil 1.0 overlap {'mrr': 0.3224, 'rec': 0.742} ruleA {'mrr': 0.8529, 'rec': 0.937} idf {'mrr': 0.3877, 'rec': 0.859} LM-clean {'mrr': 0.6012, 'rec': 0.9} LM-retrained {'mrr': 0.9425, 'rec': 0.986} retrain-idf (0.5548, 0.5328, 0.5762)
+d 20 ceil 0.996 overlap {'mrr': 0.1129, 'rec': 0.448} ruleA {'mrr': 0.6927, 'rec': 0.818} idf {'mrr': 0.1943, 'rec': 0.654} LM-clean {'mrr': 0.3614, 'rec': 0.733} LM-retrained {'mrr': 0.8302, 'rec': 0.944} retrain-idf (0.6359, 0.613, 0.6586)

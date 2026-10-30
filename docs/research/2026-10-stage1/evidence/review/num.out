@@ -1,0 +1,8 @@
+<class 'dict'> ['queries', 'emb', 'graph', 'hybrid']
+queries 82
+emb 82
+graph 82
+hybrid 82
+subs <class 'dict'> 51 ['butter', 'milk', 'egg', 'flour', 'soy sauce', 'onion', 'chicken breast', 'lemon juice', 'yeast', 'baking soda', 'baking powder', 'cream', 'tomato paste', 'rice', 'sugar', 'brown sugar', 'honey', 'olive oil', 'vegetable oil', 'sour cream', 'buttermilk', 'heavy cream', 'cornstarch', 'garlic', 'parsley', 'basil', 'cilantro', 'white wine', 'vinegar', 'mayonnaise', 'cheddar cheese', 'parmesan cheese', 'bacon', 'ground beef', 'salt', 'black pepper', 'vanilla extract', 'cocoa powder', 'lime juice', 'shallot', 'chicken broth', 'coconut milk', 'cream cheese', 'bread crumb', 'pasta', 'potato', 'spinach', 'maple syrup', 'tofu', 'worcestershire sauce']
+['', 'title', 'ingredients', 'directions', 'link', 'source', 'NER']
+rows 200000 title dups 110144 same NER set 963 jac>=.8 2575 jac>=.5 20755
