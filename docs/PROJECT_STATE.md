@@ -1,6 +1,6 @@
 # PantryChef: project state
 
-Date: 2026-10-30. Audited commit: `d49f02c`. Updated for M0 on branch `chore/m0-reset` (section 3).
+Date: 2026-10-30. Audited commit: `d49f02c`. Updated for M0, merged in PR #6 (section 3).
 Sources: ADRs [0003](decisions/0003-licence-clean-recipe-corpus.md), [0004](decisions/0004-static-first-browser-engine.md), [0005](decisions/0005-honest-claims-and-eval-reset.md); the [Stage 1 synthesis](research/2026-10-stage1/README.md) and its [review](research/2026-10-stage1/REVIEW.md); the repo itself. For findings and fixes, read [TECHNICAL_AUDIT.md](TECHNICAL_AUDIT.md).
 
 Labels: MEASURED (a run or a log shows it), ESTIMATE (a calculation), HYPOTHESIS (a test must confirm it).
@@ -31,7 +31,7 @@ PantryChef is meant to be a pantry-first recipe app. A user lists what they have
 ## 3. Git state
 
 - `main` holds PR #5 as merge commit `68ae83f` (MEASURED with `gh pr view 5`). It holds the parser fix, the hash-order sampling, the 10k training cap and docs. M0 corrected the claims in its docs.
-- Branch `chore/m0-reset` holds the M0 work. It is not pushed. Pushing it, opening its PR and merging it each need the owner's request.
+- PR #6 merges the M0 work from branch `chore/m0-reset` into `main`.
 - Tags: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`. The package version is now `0.4.0`.
 - Other branches: `fix/parser-doubled-token-coverage` (merged), and remote-only `feat/phase3-full-corpus`, `feat/phase4-nutrition`.
 - Untracked, and not committed unless the owner says so: `.codegraph/`, `CODEX_HANDOFF.md`, `TestRun.md`, `scratch_codex_audit_prompt.md`, `temp_pytest/`.
@@ -47,7 +47,7 @@ MEASURED on Windows, in a fresh clone of commit `8acc63c`:
 - `uv sync --all-extras`, then `uv run pytest`: 246 passed. `ruff check` and `ruff format --check` are clean. `uv run pantrychef --help` works.
 - `pip-audit` on the locked packages after removing MLflow and upgrading the lock: no known vulnerabilities. The old 16 flagged packages needed no reachability review, because none remains flagged.
 
-NOT MEASURED: the quickstart on Linux. The new CI matrix checks it when a PR is opened for the branch (`ci.yml` runs on PRs and on pushes to `main`).
+MEASURED in CI on PR #6 ([run 41092251895](https://github.com/aritr-codes/PantryChef-/actions/runs/41092251895)), on Linux and Windows: 246 passed, 91% coverage, `ruff` clean, `uv run pantrychef --help` works, and `pip-audit` found no known vulnerabilities.
 
 Major upgrades in the lock: pandas 2 to 3, ruff 0.15 to 0.17, python-dateutil 2 to 3, smart-open 7 to 9, filelock 3 to 4. All tests pass. No full-corpus job ran on the new versions.
 

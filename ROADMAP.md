@@ -28,7 +28,7 @@ PR #5 (parser fix and training cleanup) merged on 2026-10-30.
 | Milestone | Goal | Status |
 | --- | --- | --- |
 | Audit | Independent audit, research and decisions | ✅ 2026-10-30 |
-| M0 Reset | Honest docs, fresh clone works, dead config removed | 🟡 On branch `chore/m0-reset` |
+| M0 Reset | Honest docs, fresh clone works, dead config removed | ✅ 2026-10-30 (PR #6) |
 | M1 Thin slice | First hosted page with real search over Wikibooks recipes | ⬜ |
 | M2 Evaluation baseline | Realistic protocols, rule baselines, judging protocol and pilot | ⬜ |
 | M3 Ingredient foundation | Curated table, resolver, clean vocabulary | ⬜ |
