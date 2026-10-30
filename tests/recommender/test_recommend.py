@@ -4,7 +4,7 @@ import numpy as np
 
 from pantrychef.common.types import Recipe
 from pantrychef.recommender.features import extract_features
-from pantrychef.recommender.recommend import candidate_pool, rerank
+from pantrychef.recommender.recommend import CandidatePoolWorkspace, candidate_pool, rerank
 from pantrychef.retrieval.index import InvertedIndex
 
 
@@ -30,6 +30,10 @@ def _ref_pool(idx, pantry, cap):
     return [t[2] for t in scored[:cap]]
 
 
+def _ids(pool):
+    return [r.recipe_id for r in pool]
+
+
 def _idx():
     recipes = [
         Recipe(recipe_id="a", title="A", canonical=["egg", "flour", "milk"]),
@@ -42,7 +46,7 @@ def _idx():
 def test_candidate_pool_overlap_ordered():
     idx = _idx()
     pool = candidate_pool(idx, {"egg", "flour", "milk"}, cap=10)
-    ids = [r.recipe_id for r in pool]
+    ids = _ids(pool)
     assert "c" not in ids  # no overlap
     assert ids[0] == "a"  # full coverage (3/3) ranks above b (1/2)
 
@@ -51,6 +55,56 @@ def test_candidate_pool_respects_cap():
     idx = _idx()
     pool = candidate_pool(idx, {"egg"}, cap=1)
     assert len(pool) == 1
+
+
+def test_candidate_pool_cap_zero_returns_empty():
+    idx = _idx()
+    assert candidate_pool(idx, {"egg"}, cap=0) == []
+
+
+def test_candidate_pool_negative_cap_matches_reference():
+    idx = _idx()
+    got = _ids(candidate_pool(idx, {"egg", "flour", "milk"}, cap=-1))
+    assert got == _ref_pool(idx, {"egg", "flour", "milk"}, -1)
+
+
+def test_candidate_pool_empty_pantry_returns_empty():
+    idx = _idx()
+    assert candidate_pool(idx, set(), cap=10) == []
+
+
+def test_candidate_pool_handles_empty_posting_lists():
+    idx = _idx()
+    idx.postings["ghost"] = set()
+    idx.postings_rows["ghost"] = np.empty(0, dtype=np.int64)
+    got = _ids(candidate_pool(idx, {"egg", "ghost"}, cap=10))
+    assert got == _ref_pool(idx, {"egg", "ghost"}, 10)
+
+
+def test_candidate_pool_duplicate_pantry_entries_match_reference_if_passed():
+    idx = _idx()
+    pantry = ["egg", "egg", "flour"]
+    got = _ids(candidate_pool(idx, pantry, cap=10))
+    assert got == _ref_pool(idx, pantry, 10)
+
+
+def test_candidate_pool_repeated_calls_same_query_with_workspace():
+    idx = _idx()
+    workspace = CandidatePoolWorkspace(idx.n)
+    pantry = {"egg", "flour", "milk"}
+    expected = _ref_pool(idx, pantry, 10)
+    for _ in range(5):
+        assert _ids(candidate_pool(idx, pantry, cap=10, workspace=workspace)) == expected
+
+
+def test_candidate_pool_repeated_calls_different_queries_with_workspace():
+    idx = _idx()
+    workspace = CandidatePoolWorkspace(idx.n)
+    pantries = [{"egg"}, {"flour", "milk"}, {"beef"}, {"egg", "milk"}]
+    for pantry in pantries * 3:
+        assert _ids(candidate_pool(idx, pantry, cap=10, workspace=workspace)) == _ref_pool(
+            idx, pantry, 10
+        )
 
 
 def test_rerank_uses_model_scores():
@@ -109,7 +163,7 @@ def test_candidate_pool_equal_coverage_fewer_missing_first():
 
 
 def test_candidate_pool_matches_reference_randomized():
-    # Byte-identical guard for the vectorized rewrite: random corpora with many
+    # Byte-identical guard for the touched-row rewrite: random corpora with many
     # coverage/missing ties and string-sorted ids (r0..r79, so "r10" < "r2"),
     # checked across several caps incl. boundary-straddling ties.
     rng = random.Random(0)
@@ -120,8 +174,12 @@ def test_candidate_pool_matches_reference_randomized():
         canon = rng.sample(ingredients, size)
         recipes.append(Recipe(recipe_id=f"r{k}", title=f"t{k}", canonical=canon))
     idx = InvertedIndex.build(recipes)
+    workspace = CandidatePoolWorkspace(idx.n)
     for _ in range(60):
         pantry = set(rng.sample(ingredients, rng.randint(1, 5)))
-        for cap in (1, 3, 7, 25, 200):
-            got = [r.recipe_id for r in candidate_pool(idx, pantry, cap)]
-            assert got == _ref_pool(idx, pantry, cap), (sorted(pantry), cap)
+        for cap in (0, 1, 3, 7, 25, 200, -1):
+            expected = _ref_pool(idx, pantry, cap)
+            got = _ids(candidate_pool(idx, pantry, cap))
+            got_ws = _ids(candidate_pool(idx, pantry, cap, workspace=workspace))
+            assert got == expected, (sorted(pantry), cap)
+            assert got_ws == expected, (sorted(pantry), cap)

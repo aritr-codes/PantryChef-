@@ -28,6 +28,22 @@ def is_train(recipe_id: str, train_frac: int = 80) -> bool:
     return (h % 100) < train_frac
 
 
+def sample_order(recipes: list[Recipe], seed: int) -> list[Recipe]:
+    """Deterministic recipe order for capped ("first N") query sampling.
+
+    Ordering by md5(seed:recipe_id) decouples capped runs from corpus file
+    order (a raw prefix of the corpus is not a representative sample) and
+    makes any smaller cap a true subset of a larger one under the same seed
+    (the 10k sample is a prefix of the 20k sample), so learning-curve points
+    nest instead of being disjoint slices.
+    """
+
+    def key(recipe: Recipe) -> str:
+        return hashlib.md5(f"{seed}:{recipe.recipe_id}".encode(), usedforsecurity=False).hexdigest()
+
+    return sorted(recipes, key=key)
+
+
 def make_query(recipe: Recipe, cfg: RecConfig, rng: random.Random) -> QuerySim | None:
     """Mask cfg.mask_fraction of a recipe's unique canonical ingredients.
 

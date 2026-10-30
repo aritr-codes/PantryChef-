@@ -7,8 +7,10 @@ CPU-only; workers=1 + seed for reproducibility.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
+import numpy as np
 from gensim.models import KeyedVectors, Word2Vec
 
 from pantrychef.substitution.config import SubConfig
@@ -62,6 +64,25 @@ class EmbeddingModel:
         if a not in self._wv or b not in self._wv:
             return 0.0
         return float(self._wv.similarity(a, b))
+
+    def to_state(self) -> dict[str, object]:
+        """Return a pickle-free serialization state for bundle persistence."""
+        return {
+            "vocab": self.vocab,
+            "vectors": np.asarray(self._wv.vectors, dtype=np.float32),
+        }
+
+    @classmethod
+    def from_state(cls, vocab: Sequence[str], vectors: np.ndarray) -> EmbeddingModel:
+        """Rebuild an EmbeddingModel from a persisted vocab + vector matrix."""
+        arr = np.asarray(vectors, dtype=np.float32)
+        if arr.ndim != 2 or arr.shape[0] == 0:
+            raise ValueError("vectors must be a non-empty 2D array")
+        if len(vocab) != arr.shape[0]:
+            raise ValueError(f"vocab and vectors must align: {len(vocab)} != {arr.shape[0]}")
+        wv = KeyedVectors(vector_size=int(arr.shape[1]))
+        wv.add_vectors(list(vocab), arr)
+        return cls(wv)
 
     def save(self, path: str | Path) -> None:
         """Persist the KeyedVectors to *path* (gensim native format)."""

@@ -127,3 +127,74 @@ def test_match_index_equivalence_tied_scores() -> None:
     # Deterministic winner: tie broken by entry string -> "goat cheese" > "blue cheese".
     assert match_canonical(phrase, vocab, idx) == "goat cheese"
     assert match_canonical(phrase, vocab) == "goat cheese"
+
+
+# --- Multiset coverage: a doubled vocab entry must NOT match a single occurrence.
+# Regression for the "butter butter" propagation bug where set-membership
+# coverage let a noise entry outrank the real single-word ingredient on ~89% of
+# the corpus.
+
+DUP_VOCAB = ["butter", "butter butter", "salt", "salt salt", "lemon juice", "lemon juice juice"]
+
+
+def test_doubled_entry_does_not_match_single_occurrence() -> None:
+    # "2 Tbsp. butter" contains "butter" once -> the doubled noise entry must
+    # not win; the bare ingredient must be selected.
+    assert match_canonical("2 Tbsp. butter", DUP_VOCAB) == "butter"
+    assert match_canonical("1/2 tsp. salt", DUP_VOCAB) == "salt"
+    assert match_canonical("2 c. lemon juice", DUP_VOCAB) == "lemon juice"
+
+
+def test_doubled_entry_matches_when_word_repeats() -> None:
+    # When the source phrase genuinely repeats the word, the doubled entry is a
+    # valid (more specific) match.
+    assert match_canonical("butter butter spread", DUP_VOCAB) == "butter butter"
+
+
+def test_legit_reduplication_preserved() -> None:
+    # Reduplicated proper names (cara cara orange, peri peri sauce, agar agar
+    # powder) repeat the word in the source, so multiset coverage keeps them.
+    vocab = ["orange", "cara cara", "cara cara orange", "peri peri sauce", "agar agar powder"]
+    assert match_canonical("2 cara cara oranges", vocab) == "cara cara orange"
+    assert match_canonical("1 cup peri peri sauce", vocab) == "peri peri sauce"
+    assert match_canonical("1 tsp agar agar powder", vocab) == "agar agar powder"
+
+
+def test_order_preserving_tiebreak_prefers_source_order() -> None:
+    # Word-order-permuted NER artifacts ("cream heavy") must lose to the entry
+    # whose words appear in the same order as the source line.
+    vocab = ["heavy cream", "cream heavy", "vegetable oil", "oil vegetable"]
+    assert match_canonical("1 cup heavy cream", vocab) == "heavy cream"
+    assert match_canonical("1 cup vegetable oil", vocab) == "vegetable oil"
+    # The plain string tiebreak ("greatest entry") picks the WRONG order here
+    # ("sugar brown" > "brown sugar"); order-preservation must override it.
+    vocab2 = ["brown sugar", "sugar brown"]
+    assert match_canonical("1 c. brown sugar", vocab2) == "brown sugar"
+
+
+def test_multiset_and_order_index_equivalence() -> None:
+    # The pruned-index path must stay byte-identical to the full scan under the
+    # new multiset + order-preserving logic.
+    vocab = [
+        "butter",
+        "butter butter",
+        "salt",
+        "salt salt",
+        "heavy cream",
+        "cream heavy",
+        "cara cara",
+        "cara cara orange",
+        "orange",
+    ]
+    idx = build_match_index(vocab)
+    phrases = [
+        "2 Tbsp. butter",
+        "butter butter spread",
+        "1/2 tsp. salt",
+        "1 cup heavy cream",
+        "2 cara cara oranges",
+        "plain orange",
+        "",
+    ]
+    for p in phrases:
+        assert match_canonical(p, vocab, idx) == match_canonical(p, vocab)

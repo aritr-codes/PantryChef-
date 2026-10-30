@@ -66,8 +66,9 @@ project. Status legend: ⬜ not started · 🟡 in progress · ✅ done.
 - **Notable:** ontology dietary engine fixes the substring tagger (eggplant no
   longer tagged "egg"); USDA SR Legacy 2018-04 + Foundation 2025-04-24 join
   (match-cov 0.80 / mass-cov 0.49); gated macro imputer **gated-in** (gate
-  tripped: match-cov < 0.80 and median-unresolved-mass 0.50 > 0.20). No recipe-
-  macro gold → coverage-validated estimates only; not for medical use.
+  tripped because median-unresolved-mass 0.50 > 0.20; match-cov 0.80 was exactly
+  at threshold). No recipe-macro gold → coverage-validated estimates only; not
+  for medical use.
 - **Defer:** deep micronutrients if data sparse; wiring imputed macros into
   recipe totals; ~100-entry dietary label set.
 

@@ -166,6 +166,45 @@ workarounds. This is the honest engineering story recruiters remember.
   from Phase 2: validate headline metrics at target scale — small-sample numbers
   flatter both the baseline and the absolute scores.
 
+### Reduplicated NER artifacts propagated to 89% of the corpus via set-coverage matching   (2026-06-05, Phase 1)
+- **Problem:** the CLI returned *nothing* for the commonest ingredients —
+  `substitute butter`, `substitute oil`, `substitute salt` all gave "No
+  substitutes found", even though the model was trained on millions of recipes
+  using them. Multi-word queries ("heavy cream") worked fine.
+- **Cause (traced, not guessed):** RecipeNLG's NER field contains ~34
+  reduplicated artifacts like `"butter butter"`, `"salt salt"`, `"oil oil"`
+  (alongside *legitimate* reduplications: `agar agar`, `peri peri`, `walla
+  walla`, `cara cara`). These entered the vocabulary. `match_canonical` then
+  tested coverage with **set membership** — `all(w in tokens for w in
+  entry.split())` — so `"butter butter"` (`["butter","butter"]`) matched any
+  line containing `butter` *once*, and its word-count of 2 outranked the real
+  one-word `"butter"`. Every "butter" line canonicalized to `"butter butter"`,
+  so the bare token never entered a training sentence and was absent from the
+  word2vec vocabulary. Blast radius measured at **89.2% of the 1.27M-recipe
+  corpus** (salt salt 448k recipes, sugar sugar 333k, butter butter 238k…).
+- **Resolution:** **multiset (Counter) coverage** — an entry matches only if each
+  word occurs in the source at least as many times as in the entry — so a
+  doubled noise entry only matches a genuinely doubled line, while legitimate
+  reduplications (whose word *does* repeat in the source) are preserved. Added an
+  **order-preserving tiebreak** (prefer entries whose words are a subsequence of
+  the line) so word-permuted artifacts like `"cream heavy"` lose to `"heavy
+  cream"`. The fix is a drop-in to `match_canonical`; the rarest-token index
+  equivalence still holds (an entry's distinct rarest word is still required to
+  be present), verified by the existing property test. Per-entry metadata is
+  memoized (`@cache`) so the ~11M-call full-corpus clean isn't slowed. Re-cleaned
+  the full corpus (doubled-token occurrences **~3M → 8.4k**, the residual being
+  legitimately-doubled lines) and retrained word2vec; bare `butter`/`oil`/`salt`
+  are now model keys and the CLI works.
+- **Payoff (honest):** the bug had been *depressing* the full-corpus Phase-2
+  numbers — gold pairs keyed on common single-word ingredients silently missed
+  the model. Fixing it lifted graph-only **MRR 0.176 → 0.289** and hybrid recall@10
+  to **0.532**, with the flagship ordering (graph > food2vec baseline) and 100%
+  dietary validity preserved. Eval *validity* was never broken (gold was
+  canonicalized through the same buggy path, so comparisons stayed internally
+  consistent) — but the absolute scores were artificially low. Lesson: a
+  canonicalization bug can hide inside "consistent" metrics; spot-check the
+  user-facing path (the empty CLI result is what exposed it).
+
 ---
 
 _Anticipated (from design risk analysis):_

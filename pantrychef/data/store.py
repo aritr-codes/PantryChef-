@@ -34,6 +34,8 @@ def load_recipes(path: str | Path, limit: int | None = None) -> list[Recipe]:
 
     Output is identical to the naive loader for every field the pipeline reads.
     """
+    if limit is not None and limit <= 0:
+        return []
     out: list[Recipe] = []
     interned: dict[str, str] = {}
     with Path(path).open("r", encoding="utf-8") as f:

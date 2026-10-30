@@ -16,6 +16,7 @@ Carries two parallel views of the corpus:
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 import numpy as np
 
@@ -78,6 +79,15 @@ class InvertedIndex:
             idx.add(r)
         idx._finalize()
         return idx
+
+    def to_state(self) -> dict[str, Any]:
+        """Return a persisted index state sufficient for runtime candidate generation."""
+        return {"recipes": [recipe.model_dump() for recipe in self.recipe_by_row]}
+
+    @classmethod
+    def from_state(cls, state: dict[str, Any]) -> InvertedIndex:
+        """Restore an inverted index from persisted runtime state."""
+        return cls.build(Recipe(**recipe) for recipe in state["recipes"])
 
     def candidates(self, pantry: Iterable[str]) -> set[str]:
         out: set[str] = set()

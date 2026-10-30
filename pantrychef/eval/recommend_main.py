@@ -8,15 +8,20 @@ candidate ceiling, and in-pool conditional metrics.
 from __future__ import annotations
 
 import argparse
+import dataclasses
+from zipfile import BadZipFile
 
 import numpy as np
 
 from pantrychef.common import get_logger
 from pantrychef.common.types import Recipe
+from pantrychef.config import get_settings
 from pantrychef.eval.recommend_eval import build_eval_queries, score_queries
+from pantrychef.recommender.bundle import DEFAULT_BUNDLE_NAME, RecommenderBundle
 from pantrychef.recommender.config import RecConfig
 from pantrychef.recommender.features import FEATURE_NAMES, SUB_FEATURES, to_matrix
 from pantrychef.recommender.rank import LambdaMARTRanker, LinearRanker
+from pantrychef.recommender.sub_lookup import load_sub_lookup
 from pantrychef.recommender.train import build_examples
 from pantrychef.retrieval.index import InvertedIndex
 
@@ -99,6 +104,35 @@ def run_leaderboard(
     return rows
 
 
+def run_bundle_leaderboard(
+    bundle: RecommenderBundle,
+    sub_lookup,
+    cfg: RecConfig,
+    use_lambdamart: bool = True,
+) -> list[dict]:
+    """Evaluate a persisted recommender bundle without retraining any models."""
+    recipes = list(bundle.index.recipe_by_row)
+    queries = build_eval_queries(recipes, bundle.index, cfg, test_only=True)
+
+    def row(name: str, model, columns: tuple[str, ...]) -> dict:
+        return {
+            "model": name,
+            **score_queries(model, queries, bundle.index, sub_lookup, k=10, columns=columns),
+        }
+
+    rows = [row("overlap", OverlapModel(), FEATURE_NAMES)]
+    if "linear" in bundle.models:
+        linear = bundle.models["linear"]
+        rows.append(row("linear", linear.model, linear.columns))
+    if use_lambdamart and "lambdamart" in bundle.models:
+        lm = bundle.models["lambdamart"]
+        rows.append(row("lambdamart", lm.model, lm.columns))
+    if use_lambdamart and "lambdamart-nosub" in bundle.models:
+        lm_nosub = bundle.models["lambdamart-nosub"]
+        rows.append(row("lambdamart-nosub", lm_nosub.model, lm_nosub.columns))
+    return rows
+
+
 def _format_table(rows: list[dict]) -> str:
     """Aligned text table of leaderboard rows (model + recall@10/mrr@10/ceiling)."""
     cols = ["model", "recall@10", "mrr@10", "ceiling", "recall@10|in_pool", "n_queries"]
@@ -113,61 +147,9 @@ def _format_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _build_substitutor(recipes: list[Recipe], sub_pool: int = 20):
-    """Build the Phase-2 substitutor over *recipes* and return a memoized lookup.
-
-    The co-occurrence graph is built on the SAME recipe slice passed in, so a
-    capped run (``--max-rows N``) computes sub_fill features over that N-recipe
-    universe rather than reloading the full corpus. The word2vec embedding arm
-    is the shipped, full-corpus artifact loaded from disk. Returns ``None`` when
-    the embedding model is absent. The lookup is memoized per ingredient —
-    substitutes() is deterministic and many queries share missing ingredients.
-    """
-    from pantrychef.config import get_settings
-    from pantrychef.ingredients.vocab import load_vocabulary
-    from pantrychef.substitution.config import SubConfig
-    from pantrychef.substitution.cooccur import build_cooccurrence, sppmi
-    from pantrychef.substitution.dietary import DietTagger
-    from pantrychef.substitution.embeddings import EmbeddingModel
-    from pantrychef.substitution.graph import ContextGraph
-    from pantrychef.substitution.substitute import Substitutor
-
-    s = get_settings()
-    model = s.models_dir / "substitution" / "word2vec.kv"
-    if not model.exists():
-        return None
-    vocab = load_vocabulary(s.processed_dir / "vocab.json")
-    cmat, _, _, _ = build_cooccurrence(recipes, vocab)
-    cfg = SubConfig()
-    sub = Substitutor(
-        emb=EmbeddingModel.load(model),
-        graph=ContextGraph(
-            sppmi(cmat, cfg.sppmi_shift),
-            vocab,
-            cmat,
-            lam=cfg.lam,
-            overlap_shrink=cfg.overlap_shrink,
-        ),
-        tagger=DietTagger(known=vocab),
-        cfg=cfg,
-    )
-
-    cache: dict[str, dict[str, float]] = {}
-
-    def lookup(missing: str) -> dict[str, float]:
-        hit = cache.get(missing)
-        if hit is None:
-            hit = {s_.ingredient: s_.score for s_ in sub.substitutes(missing, k=sub_pool)}
-            cache[missing] = hit
-        return hit
-
-    return lookup
-
-
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse CLI args for the reranker leaderboard."""
     ap = argparse.ArgumentParser(description="Phase 3 reranker leaderboard.")
-    ap.add_argument("--max-rows", type=int, default=None, help="cap corpus size for fast dev")
     ap.add_argument("--mask-fraction", type=float, default=0.3)
     ap.add_argument("--seed", type=int, default=13)
     ap.add_argument("--no-subs", action="store_true", help="skip Phase-2 sub_fill features")
@@ -179,31 +161,35 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entrypoint: load artifacts (or fall back), run the leaderboard, log + print rows."""
-    from pantrychef.config import get_settings
-    from pantrychef.data.store import load_recipes
-
+    """CLI entrypoint: load the persisted bundle, score the leaderboard, print rows."""
     args = parse_args(argv)
 
     s = get_settings()
-    # Single capped load: P2 features, index, and eval all use the same slice.
-    recipes = load_recipes(s.processed_dir / "recipes.jsonl", limit=args.max_rows)
+    bundle_path = s.models_dir / "recommender" / DEFAULT_BUNDLE_NAME
+    if not bundle_path.exists():
+        log.error("Need %s. Train the recommender bundle first.", bundle_path)
+        return 1
+    try:
+        bundle = RecommenderBundle.load(bundle_path)
+    except (BadZipFile, OSError, ValueError) as exc:
+        log.error("Failed to load recommender bundle %s: %s", bundle_path, exc)
+        return 1
 
-    sub_lookup = None if args.no_subs else _build_substitutor(recipes)
+    cfg = dataclasses.replace(
+        bundle.cfg,
+        mask_fraction=args.mask_fraction,
+        seed=args.seed,
+        max_train_queries=args.max_train_queries,
+        max_eval_queries=args.max_eval_queries,
+    )
+    sub_lookup = None if args.no_subs else load_sub_lookup(cfg)
     if sub_lookup is None and not args.no_subs:
         log.warning(
             "Substitution artifacts absent; sub_fill features will be 0 and "
             "lambdamart vs lambdamart-nosub will be identical. Pass --no-subs to silence."
         )
 
-    index = InvertedIndex.build(recipes)
-    cfg = RecConfig(
-        mask_fraction=args.mask_fraction,
-        seed=args.seed,
-        max_train_queries=args.max_train_queries,
-        max_eval_queries=args.max_eval_queries,
-    )
-    rows = run_leaderboard(recipes, index, sub_lookup, cfg)
+    rows = run_bundle_leaderboard(bundle, sub_lookup, cfg, use_lambdamart=True)
     for r in rows:
         log.info("%s", {k: (round(v, 4) if isinstance(v, float) else v) for k, v in r.items()})
     print(_format_table(rows))

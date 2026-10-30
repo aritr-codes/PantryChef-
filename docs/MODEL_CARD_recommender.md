@@ -65,6 +65,11 @@ A "query-group" is one masked recipe's full candidate pool (≤200 candidates,
 exactly one positive). LambdaMART trains on these groups directly; the linear
 model trains on the flattened rows.
 
+_Counts above are from the original 2026-06-03 run. The 2026-06-06 re-run on
+the parser-fixed corpus (whose numbers appear below) uses the same protocol
+with **uncapped eval (n=9,354)** — see
+[EVALUATION.md](EVALUATION.md) for provenance._
+
 ---
 
 ## Method
@@ -123,27 +128,30 @@ corpus frequency.
   gold being reachable, isolating reranker quality from retrieval recall.
 - **NDCG omitted** — monotone-equivalent to MRR under a single gold; redundant.
 
-### Results (50k sample, n=5,000 eval queries, 4,914 in pool, ceiling 0.983)
+### Results (50k sample, parser-fixed corpus, n=9,354 eval queries, ceiling 0.989; re-run 2026-06-06)
 
 | Arm | recall@10 | mrr@10 | recall@10\|in_pool | mrr@10\|in_pool |
 | --- | --------- | ------ | ------------------ | --------------- |
-| overlap (P1 baseline) | 0.663 | 0.332 | 0.675 | 0.337 |
-| linear | 0.966 | 0.910 | 0.983 | 0.926 |
-| LambdaMART (+sub_fill) | 0.968 | 0.921 | 0.985 | 0.937 |
-| **LambdaMART −sub_fill** | **0.971** | **0.924** | **0.988** | **0.940** |
+| overlap (P1 baseline) | 0.746 | 0.414 | 0.754 | 0.418 |
+| linear | 0.979 | 0.926 | 0.990 | 0.936 |
+| LambdaMART (+sub_fill) | 0.980 | 0.935 | 0.991 | 0.945 |
+| **LambdaMART −sub_fill** | **0.980** | **0.935** | **0.991** | **0.945** |
 
 ### Headline result: CONFIRMED
 The learned reranker beats the Phase-1 overlap baseline by a wide margin on
-identical pools: **recall@10 0.663 → 0.971**, **MRR 0.332 → 0.924**. Conditional
-on the gold being reachable, the best arm reaches **0.988 recall** of a **0.983**
+identical pools: **recall@10 0.746 → 0.980**, **MRR 0.414 → 0.935**. Conditional
+on the gold being reachable, the best arm reaches **0.991 recall** of a **0.989**
 ceiling — it nearly saturates what Phase-1 retrieval makes recoverable. Linear
-and LambdaMART are close; the tree model edges ahead on MRR (rank quality).
+and LambdaMART are close; the tree model edges ahead on MRR (rank quality). (The
+pre-parser-fix 2026-06-03 numbers were overlap 0.663/0.332 and LambdaMART −sub
+0.971/0.924; the 2026-06-05 doubled-token fix lifted every arm.)
 
 ### Phase-2 → Phase-3 transfer hypothesis: NULL (reported honestly)
 The question Phase 3 was designed to test: *does injecting Phase-2 substitution
-knowledge improve recovery ranking?* **Answer: no.** `−sub_fill` (0.971/0.924) ≥
-`+sub_fill` (0.968/0.921) — a ~0.2pt difference **within ~1 standard error**
-(≈0.24pt at n=5,000), i.e. no significant effect, marginally negative.
+knowledge improve recovery ranking?* **Answer: no.** `−sub_fill` (0.9349 MRR) ≈
+`+sub_fill` (0.9347 MRR) — a difference far **within ~1 standard error**, i.e.
+no significant effect. The null also reproduced on the pre-fix corpus and at
+full-corpus scale (see EVALUATION.md).
 
 This is a **legitimate negative result**, not a failure to report around:
 - The ablation is clean because labels are feature-independent (Task §above).
@@ -162,6 +170,28 @@ sub_fill; **`−sub_fill` is the cleaner default** given the null.
 
 ---
 
+## Production training path (2026-07-03)
+
+What ships is narrower than what was studied:
+
+- **The default bundle contains only `lambdamart-nosub`** (six features — the
+  two `sub_fill_*` columns are excluded), trained by
+  `scripts/train_recommender.py` without ever loading Phase-2 artifacts; the
+  runtime serves it by default. Rationale: the sub_fill ablation is null
+  (above) **and** substitution-backed feature extraction collapses training
+  throughput ~1000× at scale. The full three-arm ablation stays available
+  behind `--experimental-subs`.
+- **Training is capped at 10,000 query-groups by default**, selected in
+  `md5(seed:recipe_id)` hash order (unbiased, reproducible, nested across cap
+  sizes — replaces the earlier biased corpus-file-order prefix). A full-corpus
+  learning curve (2026-07-03) shows metrics identical to full float precision
+  at 10k vs 20k groups — the six-feature model saturates at or below 10k — so
+  the cap costs nothing measurable and turns a ~25 h uncapped run into ~25 min.
+  `--max-train-queries 0` restores uncapped training. Curve + protocol in
+  [EVALUATION.md](EVALUATION.md).
+
+---
+
 ## Limitations
 
 1. **Recovery ≠ relevance.** The model is validated only to recover a held-out
@@ -169,19 +199,21 @@ sub_fill; **`−sub_fill` is the cleaner default** given the null.
    culinary quality, user preference, or popularity ranking. Treat 0.97 recall
    as "reconstructs a known recipe from its own pantry", not "recommends good
    recipes".
-2. **Capped by the candidate ceiling (0.983).** The reranker cannot surface a
-   recipe Phase-1 retrieval never returned. ~1.7% of eval queries have an
-   unreachable gold and are unrecoverable by construction; improving that needs
-   a better *retriever*, not a better *reranker*.
+2. **Capped by the candidate ceiling (0.989 at 50k; 0.854 at full corpus on an
+   unbiased slice).** The reranker cannot surface a recipe Phase-1 retrieval
+   never returned; queries with an unreachable gold are unrecoverable by
+   construction. Improving that needs a better *retriever*, not a better
+   *reranker* — at full corpus this is the dominant error source.
 3. **sub_fill ablation is null.** The Phase-2 → Phase-3 transfer did not pan out
    on this task (see Evaluation). Honest negative; do not cite Phase 3 as
    evidence the substitution model adds ranking value.
-4. **50k sample, not full corpus.** Numbers are on a 50,000-recipe slice. The
-   full 1.27M-recipe scale row is **deferred future work**: the current
-   candidate-pool pass is O(corpus × queries) (~4–8h even capped), and the
-   proper fix is a scipy **sparse recipe×ingredient coverage matmul** to compute
-   pools in one vectorized pass rather than per-query posting walks. The 50k
-   numbers are a representative baseline, not a full-corpus claim.
+4. **Headline numbers are the 50k slice; full corpus is harder.** The full
+   1.27M-recipe row exists (see EVALUATION.md "Full corpus"): the candidate
+   ceiling collapses (0.989 → ~0.71–0.85 depending on corpus/sampling) and the
+   overlap baseline collapses with it, while the reranker still recovers ~97%
+   of what the pool surfaces. The full all-arms re-run on the parser-fixed
+   corpus is still pending; the production arm's post-fix full-corpus datapoint
+   is mrr@10|in_pool 0.9689 on an unbiased 2,000-query slice (2026-07-03).
 5. **Phase-2 substitutor built on the same 50k slice.** For capped runs the
    sub_fill cooccurrence graph is rebuilt over the same N-recipe universe (the
    word2vec embedding arm is the shipped full-corpus artifact). This keeps the
