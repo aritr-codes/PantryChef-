@@ -1,7 +1,7 @@
 """Typed runtime configuration (pydantic-settings).
 
-Runtime/app config lives here. Experiment configs (sweeps, model
-hyperparameters) live in `configs/` and are loaded via Hydra.
+Runtime/app config lives here. Model hyperparameters are dataclasses next to
+each model (for example `pantrychef/substitution/config.py`).
 """
 
 from pantrychef.config.settings import Settings, get_settings

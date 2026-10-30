@@ -1,0 +1,42 @@
+vocab 30481 coverage 0.1870345461106919
+egg noodle gluten_free in_vocab True valid True
+cream of mushroom soup gluten_free in_vocab True valid True
+chicken noodle soup gluten_free in_vocab True valid True
+peanut butter vegan in_vocab True valid False
+coconut milk vegan in_vocab True valid False
+salt vegan in_vocab True valid False
+rice gluten_free in_vocab True valid False
+onion vegetarian in_vocab True valid False
+oil -> Oil, bearded seal (Oogruk) (Alaska Native) exact
+sugar -> Sugars, brown exact
+whole milk -> Cheese, mozzarella, whole milk jaccard
+egg -> Eggs, scrambled, frozen mixture exact
+butter -> Butter, Clarified butter (ghee) exact
+flour -> Flour, wheat, all-purpose, enriched, bleached exact
+salt -> Salt, table alias
+vegetable oil -> Vegetable oil, palm kernel exact
+milk -> Milk, buttermilk, fluid, cultured, reduced fat exact
+onion -> Onions, raw exact
+garlic -> Garlic, raw exact
+chicken breast -> Chicken breast, fat-free, mesquite flavor, sliced exact
+water -> Water, non-carbonated, bottles, natural fruit flavors, sweet exact
+3 cloves garlic | garlic 3.0 clove | Garlic, raw (408.0, True)
+2 eggs | egg 2.0 None | Eggs, scrambled, frozen mixture (56.7, True)
+13 cup soy sauce | soy sauce 13.0 cup | Soy sauce, reduced sodium, made from hydrolyzed ve (3229.4262, True)
+1 cup milk | milk 1.0 cup | Milk, buttermilk, fluid, cultured, reduced fat (243.68564, True)
+1 cup sugar | sugar 1.0 cup | Sugars, brown (201.0998, True)
+recipes 19911 garlic 2112 clove garlic 1752 both 15 any-token-garlic 4906 miss if pantry=garlic 0.5695067264573991 naive 0.453416149068323
+large 1062 lemon 456 x64
+spread lines 13650 match 0.7 mass 0.443
+first1500 lines 11187 match 0.801 mass 0.501
+vegan recipe pass 0.0 4978
+vegetarian recipe pass 0.00121 4978
+gluten_free recipe pass 0.00181 4978
+dairy_free recipe pass 0.0002 4978
+top 300 mention cov 0.636 recipes fully covered 0.054
+top 500 mention cov 0.708 recipes fully covered 0.091
+top 1000 mention cov 0.798 recipes fully covered 0.193
+top 3000 mention cov 0.909 recipes fully covered 0.484
+top 6000 mention cov 0.959 recipes fully covered 0.723
+GF-allowed with wheat-suspect token 303 ['cream of chicken soup or cream of mushroom soup', 'cream of mushroom soup or cream of chicken soup', 'cream of celery soup or cream of mushroom soup', 'cream of mushroom soup or cream of celery soup', 'cream of celery soup or cream of chicken soup', 'cream of chicken soup or cream of celery soup', 'cream of chicken soup or cream of mushroom', 'cream of mushroom soup or cream of chicken', 'cream of celery soup or cream of mushroom', 'cream of chicken soup or cream of celery', 'campbell s condensed cream of broccoli soup', 'campbell s condensed cream of mushroom soup', 'campbell s condensed cream of chicken soup', 'campbell s condensed cream of celery soup', 'low fat condensed cream of chicken soup', 'cream of chicken soup or mushroom soup', 'cream of mushroom soup or chicken soup', 'cream of celery soup or mushroom soup', 'cream of mushroom soup or celery soup', 'cream of chicken soup or celery soup', 'cream filled chocolate sandwich cookie crumb', 'shredded cracker barrel light cheddar cheese', 'campbell s condensed broccoli cheese soup', 'semi condensed cream of mushroom soup', 'stove top chicken flavor stuffing mix']
+GF allowed total 4664

@@ -1,5 +1,14 @@
 # Model Card — Recipe Recommendation & Ranking (Phase 3)
 
+> **Status, 2026-10-30: research only, and stale.** The recovery task leaks the answer. A
+> no-ML rule scores close to this model, so the numbers below do not measure recommendation
+> quality ([audit C1](TECHNICAL_AUDIT.md#c1-the-recommender-headline-measures-the-query-generator-verified)).
+> "Headline result: CONFIRMED" and the "large and real" win no longer stand. No production
+> bundle exists: the bundle on disk holds 3 models and 1,000 recipes
+> ([audit H4](TECHNICAL_AUDIT.md#h4-the-production-bundle-does-not-exist-verified)). "Saturates"
+> and "~25 min" are retracted. The `dietary_ok` feature is a constant. Trained on RecipeNLG,
+> so this model never ships ([ADR 0003](decisions/0003-licence-clean-recipe-corpus.md)).
+
 > Phase 3. Not an LLM. A learned reranker over Phase-1 overlap candidates.
 > Numbers are on a 50k-recipe sample, on a **recipe-recovery** task (not general
 > relevance). The headline win over the Phase-1 baseline is large and real; the
@@ -171,6 +180,9 @@ sub_fill; **`−sub_fill` is the cleaner default** given the null.
 ---
 
 ## Production training path (2026-07-03)
+
+**Correction, 2026-10-30:** nothing ships. This section describes code paths. No bundle of
+this form exists on disk, and no full run completed. "Saturates" and "~25 min" are retracted.
 
 What ships is narrower than what was studied:
 

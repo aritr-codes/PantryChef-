@@ -1,5 +1,8 @@
 # Learnings
 
+> **Status, 2026-10-30: historical record.** Some numbers and claims below are retracted. Read
+> [EVALUATION.md](EVALUATION.md) for each verdict.
+
 What was learned, per phase — the "learn deeply" goal made visible. Written at
 the end of each phase (and tagged with the release).
 

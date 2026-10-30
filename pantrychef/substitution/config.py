@@ -1,6 +1,6 @@
 """Hyperparameters for the substitution arms and fusion.
 
-Frozen dataclass (not Hydra — Phase 1 uses pydantic-settings + argparse). The
+Frozen dataclass. The
 training script overrides these via argparse; the ablation sweeps `alpha`.
 """
 

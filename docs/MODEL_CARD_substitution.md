@@ -1,5 +1,14 @@
 # Model Card — Ingredient Substitution (Phase 2)
 
+> **Status, 2026-10-30: research only, and stale.** The numbers below are from a pre-fix
+> 28k sample. The "CONFIRMED" result no longer stands. On the full corpus, the 95% interval
+> for the graph and embedding MRR difference is -0.048 to +0.111 at n=82
+> ([audit H1](TECHNICAL_AUDIT.md#h1-the-flagship-graph-model-does-not-yet-beat-its-baseline-verified)).
+> A hand check of 50 top results found mostly name variants (one rater, not blind). "100%
+> valid" cannot fail ([audit C2](TECHNICAL_AUDIT.md#c2-the-dietary-filter-is-unsafe-and-its-metric-cannot-fail-verified)).
+> Trained on RecipeNLG, so this model never ships
+> ([ADR 0003](decisions/0003-licence-clean-recipe-corpus.md)).
+
 > Phase 2 flagship. Not an LLM. Benchmarked vs food2vec baseline.
 > Numbers are on a 28k-recipe sample with mined gold; not directly comparable
 > to published food2vec / GISMo numbers (see Limitations).

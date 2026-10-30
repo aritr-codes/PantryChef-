@@ -7,14 +7,40 @@ the data is and *how to reproduce* it.
 > Update whenever a dataset is added, a version changes, or preprocessing
 > changes.
 
+Licence rules for each path are in [LICENSES.md](../LICENSES.md).
+
+## Snapshots
+
+Git ignores these files. The sha256 values below were computed from the files on disk on
+2026-10-30, and the first two match [ADR 0003](decisions/0003-licence-clean-recipe-corpus.md).
+
+| File under `data/raw/` | Source | Size in bytes | sha256 |
+| --- | --- | --- | --- |
+| `wikibooks_cookbook/recipes_parsed.mini.json` | `gossminn/wikibooks-cookbook` on Hugging Face. Third-party scrape, dated 2024-07-31, with no revision ids. Measurement only. M1 replaces it | 10008463 | `67fd704a6d9280742d2f217ad9f9e4f50921b84fcdefdff9bac749a518c4d46b` |
+| `openrecipes/20170107-061401-recipeitems.json.gz` | `napsternxg/openrecipes-20170107-061401-recipeitems` on Hugging Face. The original S3 URLs now return 403 | 30795953 | `6e40a82e0bd83468f8020b461924d9d6cf8bdba822642c5276868104acb6d682` |
+| `full_dataset.csv` | RecipeNLG, manual download. Research only | 2294981083 | `f376ee0bb9f99f323761abf6270d453f4eff2002c3625d04cabcf8b57dca0803` |
+| `dataset.zip` | RecipeNLG source archive. Research only | 620612136 | `1428b7e0029e3b74c63810e4a2fca1533baabd662bb024b57ca517d71b8f895e` |
+
 ## Sources
 
-### RecipeNLG  (Phase 1 — primary recipe corpus)
+### Wikibooks Cookbook  (planned display corpus)
+- **Licence:** CC BY-SA 4.0. **Size:** about 3,800 recipes with an ingredient list.
+- **Status:** the snapshot above is for measurement. M1 fetches a new snapshot from the
+  official MediaWiki API, with a revision id for each page.
+
+### Open Recipes  (planned statistics corpus)
+- **Licence:** CC BY 3.0 for the database. **Size:** 173,276 recipes with ingredients. It
+  has no instructions.
+- **Status:** statistics only. Derived statistics ship only if mined swaps pass M5. Its text
+  and images never ship.
+
+### RecipeNLG  (research corpus; never ships)
 - **Size:** ~2.23M recipes; text-only (small footprint).
 - **Why:** ships food-entity NER; large + deduplicated; fits free tier.
 - **Access:** HuggingFace `mbien/recipe_nlg`; original at
   `recipenlg.cs.put.poznan.pl`.
-- **License:** check dataset card before redistribution (research use).
+- **License:** non-commercial research and education. No text, vocabulary or trained
+  artifact ships ([ADR 0003](decisions/0003-licence-clean-recipe-corpus.md)).
 - **Schema (raw):** `title`, `ingredients` (free text), `directions`, `NER`
   (extracted food entities), `link`, `source`.
 - **Preprocessing (Phase 1):**
@@ -51,22 +77,21 @@ the data is and *how to reproduce* it.
   the unzipped FDC CSV directory). Record release dates + food count of each run
   here.
 
-### Roboflow fridge / grocery detection sets  (Phase 5 — CV)
-- **Why:** YOLO-ready labeled images, free, small (~1–5k images).
-- **Access:** Roboflow Universe (fridge-objects, fruits-and-vegetables).
-- **License:** per-dataset on Roboflow — record exact one chosen here.
-- **Use:** fine-tune detector → ONNX → local inference.
+### Vision test photos  (planned, gated in M8)
+- **Status:** not chosen. Record the source and licence here before any use.
 
 ### Recipe1M+  (deferred — multimodal)
 - **Size:** 1M recipes + 13M images (image dump huge).
-- **Status:** **deferred** — storage risk on free tier. Sample only if needed.
+- **Status:** not used. It has separate terms and never ships.
 
 ### Substitution ground-truth test set  (Phase 2 — eval)
 - **Source:** "Exploiting Food Embeddings for Ingredient Substitution" repo.
-- **Use:** precision@k / MRR evaluation of substitution model.
+- **Use:** was planned for evaluation. The repo uses mined gold and GISMo gold instead, and
+  neither ships ([LICENSES.md](../LICENSES.md)).
 
 ## Reproducibility
 
-- Download via `scripts/download_data.py` (Phase 1).
+- `scripts/download_data.py` cleans a RecipeNLG CSV that you download by hand. It does not
+  download anything.
 - Raw → `data/raw/`, cleaned → `data/interim/`, final → `data/processed/`.
 - Record dataset version + download date + row counts per source here.

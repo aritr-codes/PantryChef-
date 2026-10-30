@@ -1,102 +1,80 @@
-# 🥘 PantryChef
+# PantryChef
 
-> A no-LLM, multimodal cooking assistant: tell it what's in your kitchen — by
-> text or photo — and it finds makeable recipes, suggests **valid** ingredient
-> substitutions, and breaks down nutrition. The hard ML is built, not called.
+A person lists the ingredients they have. PantryChef is being built to show what they can
+cook now and the one item that unlocks more. It uses conventional machine learning (ML),
+information retrieval and deterministic logic. It uses no large language model (LLM) for
+core features ([ADR 0002](docs/decisions/0002-no-llm-substitution.md)).
 
-[![Phase](https://img.shields.io/badge/phases%201--4%20complete-blue)](ROADMAP.md)
-[![Python](https://img.shields.io/badge/python-3.11-blue)](.python-version)
-[![Lint](https://img.shields.io/badge/lint-ruff-261230)](pyproject.toml)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+**Status: research code. The app does not exist yet.** The repo holds a tested Python
+library and an audit of its own results. For the full state, read
+[docs/PROJECT_STATE.md](docs/PROJECT_STATE.md). Licences: code is MIT, and data rules are
+in [LICENSES.md](LICENSES.md).
 
----
+## Built and planned
 
-## Why this exists
+| Capability | Built | Planned |
+| --- | --- | --- |
+| Ingredient parser | Rules plus vocabulary match: [`pantrychef/ingredients/parser.py`](pantrychef/ingredients/parser.py) | Unicode fractions, and tests on real lines (M1). A hand-labelled gold set (M2) |
+| Search | Set-overlap baseline and the `cook` command: [`pantrychef/retrieval/`](pantrychef/retrieval/), [`pantrychef/cli.py`](pantrychef/cli.py) | One `answer()` function, with groups by missing items and top unlocking items (M1) |
+| Ranking | Research only. A candidate pool and a LambdaMART ranker: [`pantrychef/recommender/`](pantrychef/recommender/). Only tests call its runtime | Ships only if it beats an IDF rule on hand-judged pantries (M4, [ADR 0005](docs/decisions/0005-honest-claims-and-eval-reset.md)) |
+| Substitution | Graph and embedding arms, and the `substitute` command: [`pantrychef/substitution/`](pantrychef/substitution/). Mined from RecipeNLG, so it cannot ship | A curated table, and swaps mined from Open Recipes if they pass a blind rating (M5) |
+| Dietary filter | Built, but not safe to rely on: [`pantrychef/dietary/`](pantrychef/dietary/). See [audit C2](docs/TECHNICAL_AUDIT.md#c2-the-dietary-filter-is-unsafe-and-its-metric-cannot-fail-verified) | Three-state preference flags from a curated table, with no allergen claim (M5) |
+| Nutrition | Built, not fit to show: [`pantrychef/nutrition/`](pantrychef/nutrition/). See [audit C3](docs/TECHNICAL_AUDIT.md#c3-nutrition-output-is-not-fit-to-show-verified) | Stays out unless USDA FNDDS validation passes (M9) |
+| Web app | None | A static site on GitHub Pages with a browser engine (M1, M6, [ADR 0004](docs/decisions/0004-static-first-browser-engine.md)) |
+| Recipes for display | None. The research corpus is RecipeNLG, which never ships | Wikibooks Cookbook, CC BY-SA 4.0 (M1, [ADR 0003](docs/decisions/0003-licence-clean-recipe-corpus.md)) |
+| Photo input | None | Tested later, and ships only if it passes a gate (M8) |
+| Ingredient and recipe knowledge graph with ML on top | None | Proposed, not accepted ([ADR 0006](docs/decisions/0006-hybrid-graph-knowledge-base.md)) |
 
-Most "AI recipe app" portfolios are a database query with an LLM bolted on.
-PantryChef deliberately builds the parts that are genuinely ML:
-
-- **Ingredient substitution** as a learned representation + constrained graph
-  (flagship) — benchmarked against published research (`food2vec`, GISMo).
-- **Recipe recommendation** as learning-to-rank + two-tower retrieval.
-- **Ingredient detection** as a fine-tuned, ONNX-exported, edge-deployable
-  computer-vision model.
-
-…and deliberately keeps nutrition + dietary logic deterministic, because not
-everything should be a model.
-
-## What's the moat?
-
-| Built with ML                              | Deterministic on purpose          |
-| ------------------------------------------ | --------------------------------- |
-| Ingredient NER                             | Quantity/unit parsing             |
-| **Substitution: embeddings + graph**       | Dietary classification (ontology) |
-| Recommendation: LTR + two-tower            | Nutrition aggregation (USDA)      |
-| CV ingredient detection                    | Constraint filtering              |
-
-## Status
-
-**Phases 1–4 complete ✅** (tagged v0.1.0–v0.4.0). Flagship ingredient
-substitution (second-order context graph beats the food2vec baseline at full
-corpus: MRR 0.289 vs 0.259, hybrid recall@10 0.532), 100% dietary validity;
-learned recommendation reranker (recovery recall@10 0.980 vs 0.746 overlap);
-deterministic USDA nutrition (0.80 ingredient match coverage). See
-[ROADMAP.md](ROADMAP.md). Next: Phase 5 (computer-vision ingredient detection).
+Milestones are in [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md).
 
 ## Results
 
-_See [docs/EVALUATION.md](docs/EVALUATION.md) for protocol + provenance._
+An audit in October 2026 tested the old headline numbers. Many of them did not hold up.
+The ledger is in [docs/PROJECT_STATE.md, section 7](docs/PROJECT_STATE.md#7-published-numbers),
+and the details are in [docs/TECHNICAL_AUDIT.md](docs/TECHNICAL_AUDIT.md).
 
-| Phase | Task | Metric | PantryChef | vs baseline |
-| ----- | ---- | ------ | ---------- | ----------- |
-| 1 ✅ | Ingredient parser | canonical-match F1 | **0.864** (target ≥0.85) | — |
-| 1 ✅ | Retrieval baseline | recall@10 | **0.873** | — |
-| 2 ✅ | Substitution (graph) | MRR | **0.289** | food2vec 0.259 |
-| 2 ✅ | Substitution (hybrid) | recall@10 | **0.532** | — |
-| 2 ✅ | Dietary guardrail | validity % (vegan) | **100%** | — |
-| 3 ✅ | Recommendation (recovery) | recall@10 | **0.980** | overlap 0.746 |
-| 4 ✅ | Nutrition (USDA join) | match coverage | **0.800** | — |
-| 5 | Detection | mAP@0.5 | _tbd_ | — |
+| Old claim | Status |
+| --- | --- |
+| Learned ranker beats the overlap baseline | Retracted as a quality claim. The task leaks the answer, and a no-ML rule scores close to the model ([audit C1](docs/TECHNICAL_AUDIT.md#c1-the-recommender-headline-measures-the-query-generator-verified)) |
+| Graph beats food2vec | Retracted as a headline. The 95% interval for the difference includes zero ([audit H1](docs/TECHNICAL_AUDIT.md#h1-the-flagship-graph-model-does-not-yet-beat-its-baseline-verified)) |
+| 100% dietary validity | Retracted. The check cannot fail ([audit C2](docs/TECHNICAL_AUDIT.md#c2-the-dietary-filter-is-unsafe-and-its-metric-cannot-fail-verified)) |
+| Nutrition coverage | Retracted. It used only the first rows of the file ([audit C3](docs/TECHNICAL_AUDIT.md#c3-nutrition-output-is-not-fit-to-show-verified)) |
+| Full-corpus ranker lead, and "saturates at 10k" | Retracted ([PROJECT_STATE, section 7](docs/PROJECT_STATE.md#7-published-numbers)) |
+| Parser F1 and retrieval recall | Unsupported. No log exists ([PROJECT_STATE, section 7](docs/PROJECT_STATE.md#7-published-numbers)) |
+| A production recommender bundle | False. The only bundle on disk holds 1,000 recipes ([audit H4](docs/TECHNICAL_AUDIT.md#h4-the-production-bundle-does-not-exist-verified)) |
 
-<sub>Phase 1: 50k-recipe sample, min_count=5, seed=42. Phase 2: **full corpus**
-(1.27M recipes, vocab 30,481), mined gold (116 pairs, n=82), seed=42 — graph
-beats food2vec; not directly comparable to published food2vec / GISMo (see
-[docs/EVALUATION.md](docs/EVALUATION.md) for the GISMo-gold table). Phase 3: 50k
-recovery task, n=9,354, seed=13. All numbers reflect the 2026-06-05 parser
-doubled-token fix ([docs/CHALLENGES.md](docs/CHALLENGES.md)).</sub>
+New evaluation starts in M2. Each new number will link to a results file.
 
 ## Quickstart
 
-```bash
-# 1. Install uv  (https://docs.astral.sh/uv/)
-# 2. Sync the environment (creates .venv, installs locked deps)
-uv sync --extra dev
+Install [uv](https://docs.astral.sh/uv/), then run these commands from the repo root:
 
-# 3. Run checks
-make lint
-make test
+```bash
+uv sync --all-extras
+uv run pytest
+uv run pantrychef --help
 ```
 
-Runs identically on local, Google Colab, and Kaggle — see
-[CONTRIBUTING.md](CONTRIBUTING.md) for the notebook-thin convention.
+The tests need all extras, because some test files import `scipy` at module level.
 
-## Architecture
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for module boundaries and data flow.
+The `cook` and `substitute` commands need data files that are not in git. For the steps,
+read [docs/PROJECT_STATE.md, section 6](docs/PROJECT_STATE.md#6-what-a-person-can-run-today)
+and [docs/DATASET.md](docs/DATASET.md).
 
 ## Documentation
 
-| Doc | Purpose |
+| Document | Purpose |
 | --- | --- |
-| [ROADMAP.md](ROADMAP.md) | Phase plan + status |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System map, module boundaries |
-| [docs/decisions/](docs/decisions/) | ADRs — tradeoffs captured at decision time |
-| [docs/DATASET.md](docs/DATASET.md) | Data sources, licenses, provenance |
-| [docs/EVALUATION.md](docs/EVALUATION.md) | Metrics + leaderboard |
-| [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) | Experiment log |
-| [docs/CHALLENGES.md](docs/CHALLENGES.md) | Real obstacles + how solved |
-| [docs/LEARNINGS.md](docs/LEARNINGS.md) | What was learned per phase |
+| [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md) | Current state, with evidence |
+| [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) | Milestones and acceptance criteria |
+| [docs/ARCHITECTURE_PROPOSAL.md](docs/ARCHITECTURE_PROPOSAL.md) | Target design |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | What exists today, and what is planned |
+| [docs/decisions/](docs/decisions/) | Architecture decision records (ADRs) |
+| [docs/TECHNICAL_AUDIT.md](docs/TECHNICAL_AUDIT.md) | Audit findings |
+| [docs/DATASET.md](docs/DATASET.md), [LICENSES.md](LICENSES.md) | Data sources, hashes and licences |
+| [docs/EVALUATION.md](docs/EVALUATION.md) | Old evaluation record, with status flags |
+| [ROADMAP.md](ROADMAP.md), [CONTRIBUTING.md](CONTRIBUTING.md) | Status summary and development guide |
 
-## License
+## Licence
 
-MIT — see [LICENSE](LICENSE).
+Code: MIT ([LICENSE](LICENSE)). Data and artifacts: [LICENSES.md](LICENSES.md).

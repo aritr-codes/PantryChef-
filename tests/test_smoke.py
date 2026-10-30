@@ -6,20 +6,24 @@ CI from day one. Real unit tests arrive with each phase's logic.
 
 from __future__ import annotations
 
+import tomllib
+from pathlib import Path
+
 import pantrychef
 from pantrychef.common import get_logger
 from pantrychef.common.types import ParsedIngredient
 from pantrychef.config import get_settings
 
 
-def test_version() -> None:
-    assert pantrychef.__version__ == "0.0.0"
+def test_version_matches_pyproject() -> None:
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    project = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]
+    assert pantrychef.__version__ == project["version"]
 
 
 def test_settings_load() -> None:
     s = get_settings()
     assert s.processed_dir == s.data_dir / "processed"
-    assert s.mlflow_tracking_uri.startswith("file:")
 
 
 def test_logger() -> None:

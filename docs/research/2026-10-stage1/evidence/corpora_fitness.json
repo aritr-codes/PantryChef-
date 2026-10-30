@@ -1,0 +1,245 @@
+{
+ "openrecipes": {
+  "n_with_ingredients": 173276,
+  "exact_unique_title_and_ingredients": 168390,
+  "unique_titles": 148566,
+  "parse_rate": 0.867,
+  "median_canonical": 6.0,
+  "share_ge3": 0.747,
+  "sample_unique_canon_sets_ge3": 13742,
+  "field_rate": {
+   "recipeYield": 0.955,
+   "cookTime": 0.681,
+   "prepTime": 0.751,
+   "url": 1.0
+  },
+  "pantry_yield_scaled_le0_le1_le2": {
+   "student": [
+    52,
+    1057,
+    5398
+   ],
+   "weeknight": [
+    52,
+    528,
+    3180
+   ],
+   "baker": [
+    901,
+    4635,
+    12753
+   ],
+   "vegetarian": [
+    26,
+    373,
+    2235
+   ],
+   "indian": [
+    17,
+    381,
+    2530
+   ],
+   "breakfast": [
+    52,
+    780,
+    4306
+   ],
+   "pasta": [
+    35,
+    494,
+    2608
+   ],
+   "fish": [
+    26,
+    554,
+    3223
+   ],
+   "tiny": [
+    43,
+    277,
+    2149
+   ],
+   "beef": [
+    26,
+    407,
+    2487
+   ]
+  },
+  "seconds": 62
+ },
+ "wikibooks": {
+  "n_pages": 3895,
+  "n_with_ingredient_list": 3800,
+  "parse_rate": 0.985,
+  "median_canonical": 8.0,
+  "field_rate": {
+   "servings": 0.332,
+   "time": 0.331,
+   "steps": 0.983
+  },
+  "pantry_yield_le0_le1_le2": {
+   "student": [
+    16,
+    125,
+    447
+   ],
+   "weeknight": [
+    7,
+    90,
+    339
+   ],
+   "baker": [
+    73,
+    330,
+    719
+   ],
+   "vegetarian": [
+    4,
+    72,
+    286
+   ],
+   "indian": [
+    2,
+    71,
+    284
+   ],
+   "breakfast": [
+    13,
+    124,
+    386
+   ],
+   "pasta": [
+    3,
+    69,
+    268
+   ],
+   "fish": [
+    6,
+    96,
+    300
+   ],
+   "tiny": [
+    1,
+    70,
+    267
+   ],
+   "beef": [
+    5,
+    73,
+    288
+   ]
+  }
+ },
+ "recipenlg_ref": {
+  "n_full": 1274290,
+  "pantry_yield_scaled_le0_le1_le2": {
+   "student": [
+    1072,
+    16368,
+    80216
+   ],
+   "weeknight": [
+    680,
+    7672,
+    43824
+   ],
+   "baker": [
+    11856,
+    57392,
+    150344
+   ],
+   "vegetarian": [
+    368,
+    4448,
+    30208
+   ],
+   "indian": [
+    304,
+    4736,
+    34208
+   ],
+   "breakfast": [
+    1008,
+    13568,
+    65728
+   ],
+   "pasta": [
+    392,
+    5064,
+    32272
+   ],
+   "fish": [
+    448,
+    7304,
+    40376
+   ],
+   "tiny": [
+    168,
+    4840,
+    33160
+   ],
+   "beef": [
+    456,
+    5712,
+    32992
+   ]
+  }
+ },
+ "openrecipes_link_sample": {
+  "n": 150,
+  "ok": 33,
+  "blocked_403": 19,
+  "not_found_404": 42,
+  "dead_other": 56,
+  "by_source": {
+   "tastykitchen": [
+    0,
+    56
+   ],
+   "allrecipes": [
+    10,
+    43
+   ],
+   "epicurious": [
+    0,
+    13
+   ],
+   "chow": [
+    11,
+    11
+   ],
+   "bbcgoodfood": [
+    5,
+    8
+   ],
+   "williamssonoma": [
+    0,
+    5
+   ],
+   "bbcfood": [
+    0,
+    5
+   ],
+   "jamieoliver": [
+    3,
+    4
+   ],
+   "pickypalate": [
+    2,
+    2
+   ],
+   "thelittlekitchen": [
+    1,
+    1
+   ],
+   "bonappetit": [
+    1,
+    1
+   ],
+   "whatsgabycooking": [
+    0,
+    1
+   ]
+  }
+ }
+}
