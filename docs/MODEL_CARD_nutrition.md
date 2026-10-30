@@ -1,5 +1,13 @@
 # Model Card — Nutrition & Dietary Reasoning (Phase 4)
 
+> **Status, 2026-10-30: research only, and not fit to show.** The coverage numbers below use
+> the first 5,000 rows only. A random sample gives 0.710 and 0.439. Matches and masses are
+> wrong for staple ingredients, and the dietary tagger is wrong on gluten and vegan cases
+> ([audit C2](TECHNICAL_AUDIT.md#c2-the-dietary-filter-is-unsafe-and-its-metric-cannot-fail-verified),
+> [audit C3](TECHNICAL_AUDIT.md#c3-nutrition-output-is-not-fit-to-show-verified)). Nutrition
+> stays out until USDA FNDDS validation passes
+> ([ADR 0005](decisions/0005-honest-claims-and-eval-reset.md)).
+
 > Phase 4. Not an LLM. A mostly-deterministic pipeline: tiered USDA matcher +
 > coverage-honest mass resolution + ontology dietary engine + a gated macro
 > imputer. Numbers are coverage metrics on a 5,000-recipe RecipeNLG sample —

@@ -39,7 +39,7 @@ jobs:
         run: uv run pantrychef --help
 
   audit:
-    # Reviewed exceptions, if any, go here as --ignore-vuln flags with a reason in docs/SECURITY_AUDIT.md.
+    # A reviewed exception needs an --ignore-vuln flag and a comment here with the reason.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,4 +50,4 @@ jobs:
       - name: Audit locked dependencies
         run: |
           uv export --all-extras --no-hashes --no-emit-project -o audit-requirements.txt
-          uvx pip-audit -r audit-requirements.txt --no-deps --disable-pip
+          uvx pip-audit==2.10.1 -r audit-requirements.txt --no-deps --disable-pip

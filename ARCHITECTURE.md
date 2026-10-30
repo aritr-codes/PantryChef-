@@ -1,76 +1,78 @@
 # Architecture
 
-> Living document. Update whenever module boundaries, data flow, or tech
-> choices change. Diagram is ASCII for now; replace with an image in Phase 6.
+This document describes the code that exists today. The target design is in
+[docs/ARCHITECTURE_PROPOSAL.md](docs/ARCHITECTURE_PROPOSAL.md). Update this document in the
+same change as the code.
 
 ## Principles
 
-1. **Logic lives in the package, not notebooks.** Notebooks `pip install` the
-   repo and call it. Same code runs local / Colab / Kaggle.
-2. **Each module has one purpose, a typed interface, and is testable alone.**
-3. **ML where it earns its place; rules where they suffice.** (See README table.)
-4. **Reproducible by default:** `uv` lock + Hydra configs + MLflow runs.
+1. Logic lives in the package. Scripts in `scripts/` are thin entry points.
+2. Each module has one purpose and can be tested alone.
+3. Use ML only where it beats a rule on a fair test
+   ([ADR 0005](docs/decisions/0005-honest-claims-and-eval-reset.md)).
+4. `uv.lock` pins the environment. Data and models are not in git.
 
-## Module map
+## Data flow today
 
+This diagram shows only built code. The corpus is RecipeNLG, for research only
+([ADR 0003](docs/decisions/0003-licence-clean-recipe-corpus.md)). No part of this flow
+ships in a public app.
+
+```mermaid
+flowchart TD
+  RAW["data/raw/full_dataset.csv<br/>RecipeNLG, manual download"]
+  CLEAN["scripts/download_data.py<br/>clean, dedupe by title, build vocabulary"]
+  REC["data/processed/recipes.jsonl"]
+  VOC["data/processed/vocab.json"]
+  COOK["pantrychef cook<br/>set-overlap baseline"]
+  TRAINR["scripts/train_recommender.py"]
+  BR["Recommender bundle"]
+  RT["RecommenderRuntime<br/>only tests call it"]
+  TRAINS["scripts/train_substitution.py"]
+  BS["Substitution bundle"]
+  SUB["pantrychef substitute"]
+  NUT["pantrychef/nutrition<br/>no command, no output path"]
+
+  RAW --> CLEAN
+  CLEAN --> REC
+  CLEAN --> VOC
+  REC --> COOK
+  REC --> TRAINR --> BR --> RT
+  REC --> TRAINS
+  VOC --> TRAINS
+  TRAINS --> BS --> SUB
+  RAW --> NUT
 ```
-                        ┌──────────────────────────┐
-   text pantry  ─────▶  │ ingredients (parse/canon) │
-   photo pantry ──┐     └────────────┬──────────────┘
-                  │                  │ canonical ingredients
-        ┌─────────▼─────────┐        │
-        │ vision (detect →  │────────┘
-        │ canonical map)    │
-        └───────────────────┘        ▼
-                          ┌──────────────────────┐
-                          │ retrieval (overlap /  │
-                          │ FAISS candidate set)  │
-                          └───────────┬───────────┘
-                                      ▼
-        ┌──────────────┐   ┌──────────────────────┐   ┌───────────────────┐
-        │ substitution │──▶│ recommender (LTR /    │◀──│ nutrition (USDA + │
-        │ (emb + graph)│   │ two-tower rerank)     │   │ dietary ontology) │
-        └──────────────┘   └───────────┬───────────┘   └───────────────────┘
-                                      ▼
-                          ┌──────────────────────┐
-                          │ serving (FastAPI API) │ ──▶ hosted demo
-                          └──────────────────────┘
-```
 
-## Package modules (`pantrychef/`)
+Known breaks in this flow are in
+[docs/PROJECT_STATE.md, section 4](docs/PROJECT_STATE.md#4-actual-data-flow-today).
 
-| Module          | Purpose                                            | Phase |
-| --------------- | -------------------------------------------------- | ----- |
-| `config`        | Typed runtime settings (pydantic-settings)         | 0     |
-| `common`        | Logging, IO, shared types                          | 0     |
-| `data`          | Ingest, cleaning, schemas, splits                  | 1     |
-| `ingredients`   | Free-text parser + canonical vocabulary            | 1     |
-| `retrieval`     | Set-overlap baseline + FAISS candidate retrieval   | 1/3   |
-| `substitution`  | Ingredient embeddings + relation graph (flagship)  | 2     |
-| `recommender`   | Learning-to-rank + two-tower reranking             | 3     |
-| `nutrition`     | USDA mapping + dietary ontology (deterministic)    | 4     |
-| `vision`        | Detector training glue + ONNX inference            | 5     |
-| `serving`       | FastAPI inference API                              | 6     |
+## Modules
 
-## Data flow contracts
-
-- **Pantry in:** `list[str]` raw ingredient strings (typed) **or** image →
-  `vision` → `list[str]`.
-- **`ingredients.parse`** → `list[ParsedIngredient]` (qty, unit, canonical, modifier).
-- **`retrieval`** → candidate `list[RecipeId]` + match metadata.
-- **`substitution`** → per missing ingredient, ranked `list[Substitute]` with
-  dietary-validity flag.
-- **`recommender`** → ranked `list[ScoredRecipe]`.
-- **`nutrition`** → `NutritionFacts` per serving + dietary labels.
-
-> Concrete dataclasses/pydantic models defined in `pantrychef/common/types.py`
-> as each phase lands. Phase 0 ships placeholders only.
+| Path | Built | Planned |
+| --- | --- | --- |
+| `pantrychef/config/` | Typed runtime settings | No change |
+| `pantrychef/common/` | Logging and shared types | No change |
+| `pantrychef/data/` | RecipeNLG loading, cleaning and storage | Source adapters for Wikibooks and Open Recipes in `pantrychef/sources/` (M1) |
+| `pantrychef/ingredients/` | Rule-based parser and vocabulary match | Curated table and resolver (M3) |
+| `pantrychef/retrieval/` | Inverted index and set-overlap baseline | Research code. The new engine reuses ideas, not this runtime |
+| `pantrychef/recommender/` | Candidate pool, features, linear and LambdaMART rankers, bundle, runtime | Research code. A small ranker may ship if it passes M4 |
+| `pantrychef/substitution/` | Word2vec arm, context graph arm, blend, bundle | Retrain on Open Recipes and export a table (M5) |
+| `pantrychef/dietary/` | Token-based tagger. Not safe to rely on | Three-state flags from the table (M5) |
+| `pantrychef/nutrition/` | USDA matcher, mass rules, aggregation, gated imputer. Not fit to show | Gated on validation (M9) |
+| `pantrychef/eval/` | Evaluation harnesses for each research phase | New protocols and results files (M2) |
+| `pantrychef/cli.py` | `cook` and `substitute` commands | `cook` calls `answer()` (M1) |
+| `pantrychef/pack/`, `pantrychef/engine.py` | None | Pack builder and reference engine (M1) |
+| `web/` | None | TypeScript engine and app (M1, M6) |
 
 ## Tooling
 
-- **Env/deps:** `uv` (+ `uv.lock`).
-- **Lint/format:** `ruff`.
-- **Tests:** `pytest`.
-- **Config:** `pydantic-settings` (runtime) + Hydra (experiments, `configs/`).
-- **Tracking:** MLflow (self-hosted, free).
-- **Serving/demo:** FastAPI + Docker + HF Spaces / Streamlit.
+| Purpose | Built | Planned |
+| --- | --- | --- |
+| Environment | `uv`, `uv.lock` | No change |
+| Lint and format | `ruff`, pre-commit | No change |
+| Tests | `pytest` | Vitest and Playwright for `web/` (M1) |
+| CI | Lint, format, tests and CLI start on Linux and Windows, and `pip-audit` | Parity tests and an evaluation floor (M1, M2) |
+| Runtime config | `pydantic-settings` | No change |
+| Experiment records | None | `results/*.json` files (M2) |
+| Hosting | None | GitHub Pages (M1, needs owner confirmation) |

@@ -1,6 +1,6 @@
 # PantryChef: project state
 
-Date: 2026-10-30. Audited commit: `d49f02c`. Branch: `fix/parser-doubled-token-coverage`.
+Date: 2026-10-30. Audited commit: `d49f02c`. Updated for M0 on branch `chore/m0-reset` (section 3).
 Sources: ADRs [0003](decisions/0003-licence-clean-recipe-corpus.md), [0004](decisions/0004-static-first-browser-engine.md), [0005](decisions/0005-honest-claims-and-eval-reset.md); the [Stage 1 synthesis](research/2026-10-stage1/README.md) and its [review](research/2026-10-stage1/REVIEW.md); the repo itself. For findings and fixes, read [TECHNICAL_AUDIT.md](TECHNICAL_AUDIT.md).
 
 Labels: MEASURED (a run or a log shows it), ESTIMATE (a calculation), HYPOTHESIS (a test must confirm it).
@@ -19,10 +19,10 @@ PantryChef is meant to be a pantry-first recipe app. A user lists what they have
 | Substitution model (graph and embedding arms) | Built and tested | `pantrychef/substitution/`; `substitute` command loads the 123 MB bundle (not run in this audit) |
 | Dietary filter | Built, unsafe | Tagger judges 18.7% of the vocabulary. Wrong on gluten and vegan cases. See audit C2 |
 | Nutrition estimate | Built, not fit to show | Wrong matches and masses. See audit C3 |
-| Computer vision ("by photo") | Claimed but missing | `pantrychef/vision/__init__.py` holds a docstring only |
-| Two-tower model, FAISS, Hydra, NER, ONNX | Claimed but missing | No code, no dependency |
-| API server, web app, Docker path | Claimed but missing | `make serve` prints "Not implemented". A replica of the Dockerfile's `uv sync` step failed. No `docker build` was run |
-| Production recommender bundle | Claimed but missing | Disk bundle holds 1,000 recipes; docs say it is the production model |
+| Computer vision ("by photo") | Planned, gated (M8) | No code. M0 deleted the empty stub |
+| Two-tower model, FAISS, NER, ONNX | Not built | No code, no dependency. M0 removed the claims and the unused Hydra configs and MLflow |
+| API server, web app, Docker path | Not built | M0 deleted the Docker placeholders, the `serving` stub and `make serve` |
+| Production recommender bundle | Does not exist | Disk bundle holds 1,000 recipes. M0 corrected the docs that said otherwise |
 | Static web app with browser engine (ADR 0004) | Planned | No code yet |
 | Wikibooks display pack, Open Recipes statistics (ADR 0003) | Planned | Measured in research only |
 | Rebuilt ingredient table and vocabulary | Planned | Current `vocab.json` comes from RecipeNLG |
@@ -30,15 +30,26 @@ PantryChef is meant to be a pantry-first recipe app. A user lists what they have
 
 ## 3. Git state
 
-- Branch `fix/parser-doubled-token-coverage` is checked out. Latest commit: `d49f02c` (style fix for the CI quality gate).
-- PR #5 is OPEN and not merged (MEASURED with `gh pr view 5`). It holds the parser fix, the hash-order sampling, the 10k training cap and docs. The review says: merge it, then fix the docs in a follow-up PR.
-- Tags: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`. The package version is still `0.0.0` (`pantrychef/__init__.py:12`).
-- Other branches: `main`, and remote-only `feat/phase3-full-corpus`, `feat/phase4-nutrition`.
-- Modified, not committed: `ROADMAP.md` and `docs/decisions/DECISIONS.md`.
-- New, not committed (new or changed docs): `CLAUDE.md`, `docs/ARCHITECTURE_PROPOSAL.md`, `docs/DEVELOPMENT_PLAN.md`, `docs/PRODUCT_VISION.md`, `docs/PROJECT_STATE.md`, `docs/RESEARCH_FINDINGS.md`, `docs/TECHNICAL_AUDIT.md`, ADRs 0003 to 0005 (`docs/decisions/0003-*.md`, `0004-*.md`, `0005-*.md`) and `docs/research/`.
-- Other untracked: `.codegraph/`, `CODEX_HANDOFF.md`, `TestRun.md`, `scratch_codex_audit_prompt.md`, `temp_pytest/`.
-- Untracked files `CODEX_HANDOFF.md` and ADRs 0003 to 0005 hold decisions that exist only on this laptop. Commit them.
-- Corpus snapshots used for the ADR 0003 measurements are stored under `data/raw/`, which git ignores. Their sha256 hashes are in ADR 0003.
+- `main` holds PR #5 as merge commit `68ae83f` (MEASURED with `gh pr view 5`). It holds the parser fix, the hash-order sampling, the 10k training cap and docs. M0 corrected the claims in its docs.
+- Branch `chore/m0-reset` holds the M0 work. It is not pushed. Pushing it, opening its PR and merging it each need the owner's request.
+- Tags: `v0.1.0`, `v0.2.0`, `v0.3.0`, `v0.4.0`. The package version is now `0.4.0`.
+- Other branches: `fix/parser-doubled-token-coverage` (merged), and remote-only `feat/phase3-full-corpus`, `feat/phase4-nutrition`.
+- Untracked, and not committed unless the owner says so: `.codegraph/`, `CODEX_HANDOFF.md`, `TestRun.md`, `scratch_codex_audit_prompt.md`, `temp_pytest/`.
+- Withheld from git: `docs/research/2026-10-stage1/evidence/subs_out.json`. It holds output of a model trained on RecipeNLG (ADR 0003). Git ignores it, and `evidence/run_subs.py` rebuilds it.
+- Corpus snapshots stay under `data/raw/`, which git ignores. Hashes are in [DATASET.md](DATASET.md).
+- `experiments/mlruns/` stays on disk from old MLflow runs (4 runs, parameters only). Git ignores it. No code reads it.
+
+### M0 measurements (2026-10-30)
+
+MEASURED on Windows, in a fresh clone of commit `8acc63c`:
+
+- `uv sync --extra dev`, then `uv run pytest --collect-only`: 7 collection errors (`No module named 'scipy'`). This confirms the old failure.
+- `uv sync --all-extras`, then `uv run pytest`: 246 passed. `ruff check` and `ruff format --check` are clean. `uv run pantrychef --help` works.
+- `pip-audit` on the locked packages after removing MLflow and upgrading the lock: no known vulnerabilities. The old 16 flagged packages needed no reachability review, because none remains flagged.
+
+NOT MEASURED: the quickstart on Linux. The new CI matrix checks it when the branch is pushed.
+
+Major upgrades in the lock: pandas 2 to 3, ruff 0.15 to 0.17, python-dateutil 2 to 3, smart-open 7 to 9, filelock 3 to 4. All tests pass. No full-corpus job ran on the new versions.
 
 ## 4. Actual data flow today
 
@@ -102,8 +113,8 @@ I confirmed each command exists in the code. I did not run them: free RAM is abo
 
 | Command | Does | Needs |
 | --- | --- | --- |
-| `uv sync --all-extras` | Installs everything. `--extra dev` alone fails (7 test collection errors, per report 07) | uv |
-| `uv run pytest` | Runs 246 tests (MEASURED by the coordinator) | all extras |
+| `uv sync --all-extras` | Installs everything. `--extra dev` alone gives 7 test collection errors (MEASURED, section 3) | uv |
+| `uv run pytest` | Runs 246 tests (MEASURED, section 3) | all extras |
 | `uv run pantrychef cook --have eggs,flour,milk --k 5` | Ranks recipes by overlap (`cli.py:26`) | `data/processed/recipes.jsonl` |
 | `uv run pantrychef substitute butter --diet vegan --k 5` | Lists substitutes (`cli.py:43`). Choices: vegan, vegetarian, gluten_free, dairy_free | substitution bundle |
 | `uv run python -m pantrychef.eval` | Prints P1 recall@10 (`eval/__main__.py`) | recipes and vocab |
@@ -113,7 +124,7 @@ I confirmed each command exists in the code. I did not run them: free RAM is abo
 | `uv run python scripts/download_data.py` | Cleans the raw CSV. It does not download it. You fetch the CSV by hand | `full_dataset.csv` |
 | `uv run python scripts/reclean.py` | Re-cleans into a new file | raw CSV |
 
-Not available: `make train` (prints "Not implemented"), `make serve` (prints "Not implemented"). Kaggle: run Kaggle tooling with `uvx kaggle`.
+Kaggle: run Kaggle tooling with `uvx kaggle`.
 
 ## 7. Published numbers
 
@@ -136,13 +147,14 @@ Full ledger: 43 claims. 14 FALSE, 11 UNSUPPORTED, 11 STALE, 7 TRUE ([report 07](
 
 - [ADR 0003](decisions/0003-licence-clean-recipe-corpus.md): the public app uses Wikibooks Cookbook (CC BY-SA 4.0, 3,800 recipes) for display and Open Recipes (CC BY 3.0, 173,276 recipes) for statistics only. RecipeNLG is for research. The vocabulary will be rebuilt. Open Recipes statistics ship only if mined swaps pass the M5 blind rating. Otherwise nothing from Open Recipes ships.
 - [ADR 0004](decisions/0004-static-first-browser-engine.md): a static site on GitHub Pages with a small TypeScript engine in a Web Worker. Python stays the reference. A golden-file test must prove both give the same results.
+- Proposed, not accepted: [ADR 0006](decisions/0006-hybrid-graph-knowledge-base.md), a graph knowledge base with ML on top. A spike in M3 decides.
 - [ADR 0005](decisions/0005-honest-claims-and-eval-reset.md): retract the headlines. Keep masked recovery as a sanity test with the no-ML rule on the leaderboard. A learned ranker ships only if it beats the IDF rule on hand-judged pantries. Nutrition stays out of release 1. The diet filter is a three-state preference filter with no allergen claim. Every published number links to a results file.
 
 ## 9. Environment
 
-- RAM: about 1 GB free of 16 GB. Full-corpus work is blocked.
+- RAM: about 1 to 2 GB free of 16 GB. Full-corpus work is blocked.
 - GPU: NVIDIA MX150 (small; not used by any current code).
 - Disk: 48.6 GB free on `G:`.
 - OS: Windows 10. Shell: PowerShell or Git Bash.
 - Kaggle: use `uvx kaggle` for heavy jobs.
-- Python 3.11 in CI (`.github/workflows/ci.yml`). Locked with `uv.lock`.
+- Python 3.11 in CI on Linux and Windows (`.github/workflows/ci.yml`). Locked with `uv.lock`.

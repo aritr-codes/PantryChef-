@@ -21,6 +21,8 @@ artifacts before release ([ADR 0004](docs/decisions/0004-static-first-browser-en
 - Statistics corpus: Open Recipes, CC BY 3.0. Only derived statistics ship.
 - RecipeNLG and GISMo data: research only. They never ship
   ([ADR 0003](docs/decisions/0003-licence-clean-recipe-corpus.md)).
+- Proposed, not accepted: a graph knowledge base with ML on top
+  ([ADR 0006](docs/decisions/0006-hybrid-graph-knowledge-base.md)). Keep it in view from M3.
 
 ## Module boundaries
 

@@ -1,9 +1,24 @@
 # Evaluation
 
-The proof that PantryChef is ML engineering, not CRUD. Every ML component has a
-defined metric, a protocol, and a number compared against a baseline.
-
-> Update on every evaluation run. Link MLflow runs.
+> **Status, 2026-10-30: historical record. Do not quote these numbers as product quality.**
+> An audit tested them ([TECHNICAL_AUDIT.md](TECHNICAL_AUDIT.md),
+> [ADR 0005](decisions/0005-honest-claims-and-eval-reset.md)). The prose below is the original
+> text, so its confident wording ("crushes", "flagship", "confirmed") no longer stands. New
+> evaluation starts in M2. Each new number will link to a results file.
+>
+> | Section | Verdict |
+> | --- | --- |
+> | Phase 1 parser F1, retrieval recall@10 | UNSUPPORTED. No log exists. Gold comes from the same data |
+> | Phase 2 "graph beats food2vec" | RETRACTED as a headline. Full corpus: the 95% interval for the MRR difference is -0.048 to +0.111. β was tuned on the same 82 queries |
+> | Phase 2 28k tables | STALE. Pre-fix sample run |
+> | Phase 2 dietary 100% | RETRACTED. The tagger checks itself, so the metric cannot fail |
+> | Phase 2 GISMo table | UNSUPPORTED. Pre-fix, never rerun. GISMo's model was never run |
+> | Phase 3 50k table | Sanity test only. The task leaks the answer. A no-ML rule scores 0.975 on a 1,404-query set |
+> | Phase 3 full corpus (7.7×, ceiling 0.706) | RETRACTED. Pre-fix. The post-fix run ended in `MemoryError` |
+> | "Saturates at 10k" and "~25 minutes" | RETRACTED. The metric sees only the gold slot, and no full production run completed |
+> | "What ships" (production bundle) | FALSE. The only bundle on disk has 1,000 recipes, 3 models and an older commit |
+> | sub_fill null | STANDS, on the same leaked task |
+> | Phase 4 nutrition coverage | RETRACTED. First 5,000 rows only. A random sample gives 0.710 and 0.439. No log exists |
 
 ## Protocol principles
 
@@ -240,6 +255,10 @@ near-saturating what the pool surfaces._
 
 #### Production training path + train-query cap (2026-07-03)
 
+> **Correction, 2026-10-30.** No production bundle exists. Nothing ships from this code.
+> The bundle on disk holds 3 models and 1,000 recipes. "Saturates" and "~25 minutes" below
+> are retracted (see the status table at the top).
+>
 > **What ships vs what's studied.** The default training entrypoint
 > (`scripts/train_recommender.py`) trains **only** `lambdamart-nosub` on the six
 > non-substitution features and never loads Phase-2 artifacts; the runtime

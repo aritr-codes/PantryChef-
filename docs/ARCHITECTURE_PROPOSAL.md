@@ -67,6 +67,7 @@ flowchart TB
   PKG --> LOCAL
   PKG --> KAGGLE
   LOCAL --> RES
+  KAGGLE --> RES
   PKG --> TEST
   WEB --> TEST
   GOLD --> TEST
@@ -275,11 +276,22 @@ run.
 | `retrieval/`, `recommender/` | Keep as research and history. The new engine reuses ideas, not the runtime |
 | `substitution/` | Keep. Retrain on Open Recipes. Export a table |
 | `nutrition/`, `dietary/` | Keep nutrition unshipped. Replace the dietary tagger with table flags |
-| `vision/`, `serving/` stubs, Hydra configs, MLflow, Docker placeholders | Delete in M0 |
+| `vision/`, `serving/` stubs, Hydra configs, MLflow, Docker placeholders | Deleted in M0 |
 | `data/nutrition/aliases.json` | Unused in v1. Review its origin at M9 |
 | `cli.py` | Change `cook` to call `answer()` |
 
-## 14. Open questions
+## 14. Proposed direction: graph knowledge base with ML on top
+
+Status: proposed, not accepted. [ADR 0006](decisions/0006-hybrid-graph-knowledge-base.md)
+records it. Nothing in the sections above depends on it.
+
+The owner intends a classical ML-backed project. The idea is a typed ingredient and recipe
+graph, shipped as a static artifact, with ML for retrieval, ranking, ingredient
+understanding and recommendations. It fits ADR 0004, because traversals can be precomputed
+at build time. A spike in M3 decides whether the graph stays. ADR 0005 still decides whether
+each model ships. If the spike fails, the design above stands, with a flat table.
+
+## 15. Open questions
 
 These do not block M0 or M1.
 

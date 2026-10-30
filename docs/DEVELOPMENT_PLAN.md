@@ -50,6 +50,9 @@ order. M8 and M9 are independent of each other.
 
 **Tests:** a CI job that runs the exact quickstart commands.
 
+M0 also records the proposed graph direction in
+[ADR 0006](decisions/0006-hybrid-graph-knowledge-base.md).
+
 ## M1: Thin slice (about 2 weeks)
 
 **Objective:** a real person can use a real, small version, so contract problems appear
@@ -119,6 +122,8 @@ gate.
 - Decide whether the black pepper staple satisfies a bare "pepper" line. There are 510
   such lines, and some are not black pepper.
 - Rebuild the pack with the table. Measure coverage.
+- Run the graph spike in [ADR 0006](decisions/0006-hybrid-graph-knowledge-base.md), and accept
+  or reject that ADR. Allow for `is_a` and `form_of` columns in the table.
 
 **Acceptance:**
 
@@ -248,7 +253,8 @@ demonstrates, and what remains if every gate fails.
 | Data engineering | Fetcher, adapters, pack builder, manifest. Scale only in research | Certain | Unchanged, but small scale in product |
 | Information retrieval | Index, IDF ordering in browser, protocols | Certain | Unchanged |
 | Recommendation | Small ranker with judged data | Gated (M4) | The IDF rule ships. A published negative result remains |
-| Knowledge graph | Ingredient table with roles and relations. Mined context graph is research | Partly certain. Table is certain, graph in product is gated (M5) | A table, not a true graph, in the product |
+| Knowledge graph | Ingredient table with roles and relations. Mined context graph is research | Partly certain. Table is certain, graph in product is gated (M3 spike in ADR 0006, M5) | A table, not a true graph, in the product |
+| Hybrid graph with ML on top (proposed, [ADR 0006](decisions/0006-hybrid-graph-knowledge-base.md)) | Typed graph artifact, a build-time mention classifier, edge proposals, graph features in the ranker | Gated. The M3 spike decides the graph. Each model has its own gate under ADR 0005 | Flat table and rules. Results stay as research |
 | Practical ML | Mined swaps, ranker | Gated (M4, M5) | Research results only |
 | Computer vision | Tiled image-text matching | Gated (M8) | A published test, no feature |
 | Model optimisation | Vision quantisation tests. Small ranker in browser | Gated (M8, M4) | Measurements only |
@@ -256,6 +262,10 @@ demonstrates, and what remains if every gate fails.
 | MLOps | Kaggle flow, results files, release manifest, parity and evaluation gates in CI | Certain | Unchanged |
 | Full stack and deployment | TypeScript engine and app on Pages | Certain | Unchanged |
 | Product thinking | Research, user tests, wording rules | Certain | Unchanged |
+
+The owner intends a classical ML-backed project. ADR 0006 records that direction as a
+proposal. It adds tests, and it does not remove any gate, so the worst case below stays
+possible.
 
 Worst case: if all gates fail, the product is deterministic, with no ML in the browser.
 The ML work then exists as honest research results. That would still be a useful product,

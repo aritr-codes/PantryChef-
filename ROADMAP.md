@@ -15,20 +15,20 @@ This work built the Python package. No part of it is usable as a product yet.
 
 | Phase | Result | Status today |
 | --- | --- | --- |
-| 0 Scaffold | Tooling and CI. Hydra and MLflow are unused or barely used | 🔁 To be cleaned in M0 |
+| 0 Scaffold | Tooling and CI. M0 removed the unused Hydra and MLflow | ✅ |
 | 1 Parser and retrieval | Rule-based parser, F1 0.864 against gold from the same data | 🔁 Metric is circular. No log exists |
 | 2 Substitution | Graph MRR 0.289 and embedding 0.259 (n=82) | 🔁 Difference is within noise. Hand check shows mostly name variants |
 | 3 Recommendation | LambdaMART recall@10 0.980 and overlap 0.746 at 50k | 🔁 Task is leaked. A no-ML rule scores 0.975 |
 | 4 Nutrition and dietary | USDA join, coverage 0.800 on the first rows | 🔁 Matches are wrong for staples. Dietary "100%" cannot fail |
 
-PR #5 (parser fix and training cleanup) is open and unmerged.
+PR #5 (parser fix and training cleanup) merged on 2026-10-30.
 
 ## Revival plan (from 2026-10)
 
 | Milestone | Goal | Status |
 | --- | --- | --- |
 | Audit | Independent audit, research and decisions | ✅ 2026-10-30 |
-| M0 Reset | Honest docs, fresh clone works, dead config removed | ⬜ |
+| M0 Reset | Honest docs, fresh clone works, dead config removed | 🟡 On branch `chore/m0-reset` |
 | M1 Thin slice | First hosted page with real search over Wikibooks recipes | ⬜ |
 | M2 Evaluation baseline | Realistic protocols, rule baselines, hand-judged set | ⬜ |
 | M3 Ingredient foundation | Curated table, resolver, clean vocabulary | ⬜ |
